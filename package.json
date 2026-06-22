@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "generate-vocals": "node scripts/generate-vocals.mjs"
+    "preview": "npm run build && wrangler dev",
+    "generate-vocals": "node scripts/generate-vocals.mjs",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -17,12 +18,14 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.42.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.4.1",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
-    "vite-plugin-pwa": "^1.0.0"
+    "vite-plugin-pwa": "^1.0.0",
+    "wrangler": "^4.103.0"
   }
 }
