@@ -61,10 +61,6 @@ export async function fetchSiteStats(): Promise<SiteStats | null> {
   };
 }
 
-export function showVisitorStats(): boolean {
-  return import.meta.env.VITE_SHOW_VISITOR_STATS === 'true';
-}
-
 declare global {
   interface Window {
     dataLayer?: unknown[];

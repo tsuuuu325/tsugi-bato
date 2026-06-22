@@ -27,6 +27,11 @@ create index if not exists feed_comments_song_id on feed_comments(song_id, creat
 alter table feed_songs enable row level security;
 alter table feed_comments enable row level security;
 
+drop policy if exists "feed_songs read" on feed_songs;
+drop policy if exists "feed_songs insert" on feed_songs;
+drop policy if exists "feed_songs delete" on feed_songs;
+drop policy if exists "feed_comments read" on feed_comments;
+drop policy if exists "feed_comments insert" on feed_comments;
 create policy "feed_songs read" on feed_songs for select using (true);
 create policy "feed_songs insert" on feed_songs for insert with check (true);
 create policy "feed_songs delete" on feed_songs for delete using (true);
@@ -48,6 +53,9 @@ create index if not exists feed_reactions_song_id on feed_reactions(song_id, cre
 
 alter table feed_reactions enable row level security;
 
+drop policy if exists "feed_reactions read" on feed_reactions;
+drop policy if exists "feed_reactions insert" on feed_reactions;
+drop policy if exists "feed_reactions delete" on feed_reactions;
 create policy "feed_reactions read" on feed_reactions for select using (true);
 create policy "feed_reactions insert" on feed_reactions for insert with check (true);
 create policy "feed_reactions delete" on feed_reactions for delete using (true);
@@ -76,6 +84,9 @@ alter table subscriptions enable row level security;
 alter table subscriptions add column if not exists customer_email text;
 alter table subscriptions add column if not exists customer_name text;
 
+drop policy if exists "subscriptions read own" on subscriptions;
+drop policy if exists "subscriptions service write" on subscriptions;
+drop policy if exists "subscriptions service update" on subscriptions;
 create policy "subscriptions read own" on subscriptions for select using (true);
 create policy "subscriptions service write" on subscriptions for insert with check (true);
 create policy "subscriptions service update" on subscriptions for update using (true);
@@ -93,6 +104,7 @@ create index if not exists site_visits_visitor_id on site_visits(visitor_id);
 
 alter table site_visits enable row level security;
 
+drop policy if exists "site_visits insert" on site_visits;
 create policy "site_visits insert" on site_visits for insert with check (true);
 
 create or replace function get_site_stats()

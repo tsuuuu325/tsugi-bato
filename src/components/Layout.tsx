@@ -1,22 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
-import { fetchSiteStats, showVisitorStats, trackPageView, type SiteStats } from '@/lib/analytics';
+import { trackPageView } from '@/lib/analytics';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const { t } = useI18n();
-  const [stats, setStats] = useState<SiteStats | null>(null);
 
   useEffect(() => {
     trackPageView(location.pathname);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!showVisitorStats()) return;
-    void fetchSiteStats().then(setStats);
   }, [location.pathname]);
 
   return (
@@ -58,15 +52,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Link to="/legal/tokushoho">{t('legal.tokushoho')}</Link>
         </nav>
         <span>{t('app.footer')}</span>
-        {showVisitorStats() && stats && (
-          <span className="footer-stats">
-            {t('stats.footer', {
-              unique: stats.unique_visitors,
-              pageviews: stats.pageviews,
-              todayUnique: stats.today_unique,
-            })}
-          </span>
-        )}
       </footer>
     </div>
   );
