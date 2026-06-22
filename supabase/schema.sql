@@ -1,0 +1,80 @@
+-- BeatRelay タイムライン用（Supabase SQL Editor で実行）
+
+create table if not exists feed_songs (
+  id text primary key,
+  share_code text not null,
+  title text not null,
+  bpm int not null,
+  mode text not null,
+  creator_name text not null,
+  creator_avatar text not null default '🎧',
+  layers jsonb not null default '[]',
+  completed_at timestamptz not null default now()
+);
+
+create table if not exists feed_comments (
+  id uuid primary key default gen_random_uuid(),
+  song_id text not null references feed_songs(id) on delete cascade,
+  author_name text not null,
+  author_avatar text not null default '🎧',
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists feed_songs_completed_at on feed_songs(completed_at desc);
+create index if not exists feed_comments_song_id on feed_comments(song_id, created_at desc);
+
+alter table feed_songs enable row level security;
+alter table feed_comments enable row level security;
+
+create policy "feed_songs read" on feed_songs for select using (true);
+create policy "feed_songs insert" on feed_songs for insert with check (true);
+create policy "feed_comments read" on feed_comments for select using (true);
+create policy "feed_comments insert" on feed_comments for insert with check (true);
+
+-- いいね（1端末1曲1回）
+create table if not exists feed_reactions (
+  id text primary key,
+  song_id text not null references feed_songs(id) on delete cascade,
+  device_id text not null,
+  author_name text not null,
+  author_avatar text not null default '🎧',
+  created_at timestamptz not null default now(),
+  unique (song_id, device_id)
+);
+
+create index if not exists feed_reactions_song_id on feed_reactions(song_id, created_at desc);
+
+alter table feed_reactions enable row level security;
+
+create policy "feed_reactions read" on feed_reactions for select using (true);
+create policy "feed_reactions insert" on feed_reactions for insert with check (true);
+create policy "feed_reactions delete" on feed_reactions for delete using (true);
+
+-- 既存DB向け: BPMメタ（任意）
+alter table feed_songs add column if not exists reference_bpm int;
+alter table feed_songs add column if not exists section_bpms jsonb;
+
+-- Pro サブスクリプション（Stripe Webhook で更新）
+create table if not exists subscriptions (
+  device_id text primary key,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  customer_email text,
+  customer_name text,
+  status text not null default 'inactive',
+  cancel_at_period_end boolean not null default false,
+  current_period_end timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists subscriptions_status on subscriptions(status);
+
+alter table subscriptions enable row level security;
+
+alter table subscriptions add column if not exists customer_email text;
+alter table subscriptions add column if not exists customer_name text;
+
+create policy "subscriptions read own" on subscriptions for select using (true);
+create policy "subscriptions service write" on subscriptions for insert with check (true);
+create policy "subscriptions service update" on subscriptions for update using (true);
