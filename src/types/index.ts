@@ -1,4 +1,4 @@
-export type PadCategory = 'kick' | 'snare' | 'hat' | 'clap' | 'bass' | 'synth' | 'fx' | 'perc' | 'cowbell' | 'vocal';
+export type PadCategory = 'kick' | 'snare' | 'hat' | 'clap' | 'bass' | 'synth' | 'fx' | 'perc' | 'cowbell';
 
 export type SongStatus = 'open' | 'complete';
 export type SongMode = 'solo' | 'collab' | 'virtual';
@@ -37,9 +37,9 @@ export interface PadDefinition {
   /** ロングループ系（シーケンサー用の長めパッド） */
   isLong?: boolean;
   /** ロングパッドのジャンル分類（UI表示用） */
-  longGenre?: 'phonk' | 'edm' | 'vocal' | 'common';
-  /** 実音声ボーカルの歌詞（ツールチップ表示） */
-  lyric?: string;
+  longGenre?: 'phonk' | 'edm' | 'common';
+  /** サンプル曲専用 — 通常のパッド選択には出さない */
+  isExample?: boolean;
 }
 
 export type StepPattern = (0 | 1)[];
@@ -82,8 +82,12 @@ export interface Song {
   sectionCount: number;
   /** コラボ/ソロで現在パート追加中の端末ID */
   activeContributorId?: string;
+  /** 現在の追加セッション開始時刻（キャンセル時にこの後の音だけ戻す） */
+  activeSessionStartedAt?: string;
   /** 各区間のBPM（index=sectionIndex、未設定時は bpm と同じ） */
   sectionBpms?: number[];
+  /** アプリ内サンプル曲（例: Volento風デモ） */
+  isExample?: boolean;
 }
 
 export interface SongWithLayers extends Song {
@@ -174,7 +178,6 @@ export const CATEGORY_LABELS: Record<PadCategory, string> = {
   fx: 'FX',
   perc: 'PERC',
   cowbell: 'COW',
-  vocal: 'VOCAL',
 };
 
 /** 4小節ループの再生秒数 */

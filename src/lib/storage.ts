@@ -25,6 +25,7 @@ function clearLocalSongStorage(): void {
   localStorage.removeItem(LOCAL_FEED_KEY);
   localStorage.removeItem('tsugi-bato-local-comments');
   localStorage.removeItem('tsugi-bato-local-reactions');
+  localStorage.removeItem('tsugi-bato-examples-version');
 }
 
 /** 古いデモ曲（Drift Waiting 等）が残っていたら削除 */
@@ -97,6 +98,24 @@ export function updateLayer(layerId: string, updates: Partial<Layer>): void {
 export function deleteLayer(layerId: string): void {
   const layers = getAllLayers().filter((l) => l.id !== layerId);
   saveJson(LAYERS_KEY, layers);
+}
+
+export function deleteSong(songId: string): void {
+  replaceAllSongs(getAllSongs().filter((s) => s.id !== songId));
+  replaceAllLayers(getAllLayers().filter((l) => l.songId !== songId));
+}
+
+/** 未完成（参加待ち）のユーザー曲を削除 — サンプル曲は残す */
+export function purgeOpenSongs(): number {
+  const openIds = new Set(
+    getAllSongs()
+      .filter((s) => s.status === 'open' && !s.isExample)
+      .map((s) => s.id),
+  );
+  if (openIds.size === 0) return 0;
+  replaceAllSongs(getAllSongs().filter((s) => !openIds.has(s.id)));
+  replaceAllLayers(getAllLayers().filter((l) => !openIds.has(l.songId)));
+  return openIds.size;
 }
 
 export function replaceAllLayers(layers: Layer[]): void {
@@ -203,7 +222,7 @@ export function getCompletedSongs(): SongWithLayers[] {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-/** @deprecated デモ曲の自動投入は行わない */
+/** @deprecated デモ曲の自動投入は行わない — サンプル曲は seedExampleBeats（songStore.init） */
 export function seedDemoData(): void {
   /* intentionally empty */
 }

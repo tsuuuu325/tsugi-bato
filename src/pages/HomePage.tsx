@@ -8,6 +8,8 @@ import { canAddLayer, canUserAddLayer } from '@/types';
 
 import { useI18n } from '@/i18n/LocaleProvider';
 
+import { getLayersForSong } from '@/lib/storage';
+
 import {
 
   remainingCreatedSongs,
@@ -39,6 +41,8 @@ export function HomePage() {
   const username = useSongStore((s) => s.username);
 
   const openSongs = useSongStore((s) => s.openSongs);
+
+  const exampleSongs = useSongStore((s) => s.exampleSongs);
 
   const init = useSongStore((s) => s.init);
 
@@ -97,8 +101,6 @@ export function HomePage() {
       && canUserContributeToday(deviceId, s),
 
   );
-
-
 
   return (
 
@@ -221,6 +223,72 @@ export function HomePage() {
         <p>{t('home.timelineDesc')}</p>
 
       </Link>
+
+
+
+      {exampleSongs.length > 0 && (
+
+        <section className="section example-section">
+
+          <h2 className="section-title">{t('home.examplesTitle')}</h2>
+
+          <p className="hint hint--compact example-section-desc">{t('home.examplesDesc')}</p>
+
+          <div className="example-list">
+
+            {exampleSongs.map((song) => {
+
+              const layers = getLayersForSong(song.id);
+
+              return (
+
+                <Link
+
+                  key={song.id}
+
+                  to={`/song/${song.shareCode}`}
+
+                  className="example-card"
+
+                >
+
+                  <div className="example-card-glow" aria-hidden />
+
+                  <span className="badge badge--example example-card-badge">{t('home.exampleBadge')}</span>
+
+                  <span className="example-icon">🔥</span>
+
+                  <div className="example-card-body">
+
+                    <span className="example-card-title">{song.title}</span>
+
+                    <span className="example-card-meta">
+
+                      {t('home.exampleVolentoMeta', {
+
+                        bpm: song.bpm,
+
+                        layers: layers.length,
+
+                        sections: song.sectionCount,
+
+                      })}
+
+                    </span>
+
+                  </div>
+
+                </Link>
+
+              );
+
+            })}
+
+          </div>
+
+        </section>
+
+      )}
 
 
 

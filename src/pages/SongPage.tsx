@@ -12,6 +12,9 @@ import {
   getContributorCount,
   getSectionBpms,
   getEffectiveSectionCount,
+  MIN_BPM,
+  MAX_BPM,
+  DEFAULT_BPM,
 } from '@/types';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { getMaxSections, canPublishToTimeline, canUserContributeToday } from '@/lib/plan';
@@ -23,12 +26,14 @@ export function SongPage() {
   const init = useSongStore((s) => s.init);
   const loadSongByCode = useSongStore((s) => s.loadSongByCode);
   const completeSong = useSongStore((s) => s.completeSong);
+  const updateExampleBpm = useSongStore((s) => s.updateExampleBpm);
   const deviceId = useSongStore((s) => s.deviceId);
   const username = useSongStore((s) => s.username);
   const avatarEmoji = useSongStore((s) => s.avatarEmoji);
   const [song, setSong] = useState(() => (code ? loadSongByCode(code) : null));
   const [publishTitle, setPublishTitle] = useState('');
   const [publishMessage, setPublishMessage] = useState('');
+  const [exampleBpm, setExampleBpm] = useState(DEFAULT_BPM);
   const focusContinue = searchParams.get('continue') === '1';
 
   useEffect(() => {
@@ -39,6 +44,19 @@ export function SongPage() {
   useEffect(() => {
     if (song) setPublishTitle(song.title);
   }, [song?.id, song?.title]);
+
+  useEffect(() => {
+    if (!song?.isExample) return;
+    const bpms = getSectionBpms(song);
+    setExampleBpm(bpms[0] ?? song.bpm);
+  }, [song?.id, song?.bpm, song?.sectionBpms?.join(',')]);
+
+  const handleExampleBpmChange = (bpm: number) => {
+    if (!song?.isExample) return;
+    setExampleBpm(bpm);
+    const result = updateExampleBpm(song.id, bpm);
+    if (result.ok) setSong(result.song);
+  };
 
   const handlePublish = () => {
     if (!song) return;
@@ -81,6 +99,7 @@ export function SongPage() {
           {isComplete && <span className="badge badge--complete">{t('song.complete')}</span>}
           {song.mode === 'virtual' && <span className="badge badge--virtual">{t('song.virtual')}</span>}
           {song.mode === 'solo' && <span className="badge badge--open">{t('song.solo')}</span>}
+          {song.isExample && <span className="badge badge--example">{t('home.exampleBadge')}</span>}
           {slotsOpen && !isComplete && (
             <span className="badge badge--continue">{t('part.next', { part: formatPart(nextPart) })}</span>
           )}
@@ -114,6 +133,26 @@ export function SongPage() {
       )}
       {canPublish && (
         <p className="hint hint--compact">{t('plan.timelineCanPublish')}</p>
+      )}
+
+      {song.isExample && (
+        <section className="card example-bpm-card">
+          <label className="label" htmlFor="example-bpm">
+            {t('song.exampleBpmLabel', { min: MIN_BPM, max: MAX_BPM })}
+          </label>
+          <div className="bpm-control">
+            <input
+              id="example-bpm"
+              type="range"
+              min={MIN_BPM}
+              max={MAX_BPM}
+              value={exampleBpm}
+              onChange={(e) => handleExampleBpmChange(Number(e.target.value))}
+            />
+            <span className="bpm-value">{exampleBpm}</span>
+          </div>
+          <p className="hint hint--compact">{t('song.exampleBpmHint')}</p>
+        </section>
       )}
 
       {publishMessage && (

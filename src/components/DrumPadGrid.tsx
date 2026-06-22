@@ -52,7 +52,7 @@ export function DrumPadGrid({
                 '--pad-dark': pad.colorDark,
               } as React.CSSProperties}
               onClick={() => handleTap(pad)}
-              title={pad.lyric ?? pad.shortLabel}
+              title={pad.shortLabel}
             >
               <span className="drum-pad-label">{pad.shortLabel}</span>
               {isLong && <span className="drum-pad-badge">{t('common.bars4')}</span>}

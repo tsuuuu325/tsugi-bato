@@ -55,15 +55,6 @@ export const PAD_PACK: PadDefinition[] = [
   { id: 'pad-perc-ghost', name: 'Ghost Note', nameJa: 'ゴースト', category: 'perc', preset: 'perc_ghost', color: '#bb8866', colorDark: '#775544', shortLabel: 'GHO', gridIndex: 62 },
   { id: 'pad-fx-reverse', name: 'Reverse', nameJa: 'リバース', category: 'fx', preset: 'fx_reverse', color: '#aa88ff', colorDark: '#6655cc', shortLabel: 'REV', gridIndex: 63 },
 
-  // ── Vocal — 人間 ──
-  { id: 'pad-vocal-hey', name: 'Human Hey', nameJa: 'Hey', category: 'vocal', preset: 'vocal_human_hey', color: '#ff5588', colorDark: '#cc2255', shortLabel: 'HEY', gridIndex: 70 },
-  { id: 'pad-vocal-yeah', name: 'Human Yeah', nameJa: 'Yeah', category: 'vocal', preset: 'vocal_human_yeah', color: '#ff6688', colorDark: '#cc3366', shortLabel: 'YEAH', gridIndex: 71 },
-  { id: 'pad-vocal-oi', name: 'Human Oi', nameJa: 'Oi', category: 'vocal', preset: 'vocal_human_oi', color: '#ff4466', colorDark: '#bb2244', shortLabel: 'OI', gridIndex: 72 },
-  // ── Vocal — ロボ ──
-  { id: 'pad-vocal-robo-beep', name: 'Robot Beep', nameJa: 'Beep', category: 'vocal', preset: 'vocal_robot_beep', color: '#44ccff', colorDark: '#2288aa', shortLabel: 'BEEP', gridIndex: 73 },
-  { id: 'pad-vocal-robo-talk', name: 'Robot Talk', nameJa: 'Talk', category: 'vocal', preset: 'vocal_robot_talk', color: '#55ddff', colorDark: '#3399bb', shortLabel: 'TALK', gridIndex: 74 },
-  { id: 'pad-vocal-robo-alert', name: 'Robot Alert', nameJa: 'Alert', category: 'vocal', preset: 'vocal_robot_alert', color: '#66eeff', colorDark: '#44aacc', shortLabel: 'ALRT', gridIndex: 75 },
-
   // ── Long loops — Phonk ──
   { id: 'pad-long-trap-808', name: '808 Pattern', nameJa: '808パターン', category: 'kick', preset: 'long_trap_808', color: '#ee2244', colorDark: '#991122', shortLabel: '8PAT', gridIndex: 115, isLong: true, longGenre: 'phonk' },
   { id: 'pad-long-bass', name: '808 Loop', nameJa: '808Loop', category: 'bass', preset: 'long_bass', color: '#6622dd', colorDark: '#331188', shortLabel: '8LOOP', gridIndex: 101, isLong: true, longGenre: 'phonk' },
@@ -112,12 +103,21 @@ export const PAD_PACK: PadDefinition[] = [
   { id: 'pad-long-steady-pad', name: 'Steady Pad', nameJa: '固定Pad', category: 'synth', preset: 'long_steady_pad', color: '#5533cc', colorDark: '#331188', shortLabel: 'STPAD', gridIndex: 160, isLong: true, longGenre: 'common' },
   { id: 'pad-long-steady-wash', name: 'Steady Atmos', nameJa: '固定Atmos', category: 'fx', preset: 'long_steady_wash', color: '#22bb99', colorDark: '#118866', shortLabel: 'STATM', gridIndex: 161, isLong: true, longGenre: 'common' },
 
-  // ── Long loops — Vocal（実音声・英語歌詞）──
-  { id: 'pad-long-phonk-drift', name: 'Drift Vocals', nameJa: 'Drift', category: 'vocal', preset: 'long_vocal_drift', color: '#cc1133', colorDark: '#880022', shortLabel: 'DRIFT', gridIndex: 170, isLong: true, longGenre: 'vocal', lyric: 'I drift in the dark tonight. Smoke in the air.' },
-  { id: 'pad-long-phonk-smoke', name: 'Smoke Vocals', nameJa: 'Smoke', category: 'vocal', preset: 'long_vocal_smoke', color: '#9933ff', colorDark: '#5511aa', shortLabel: 'SMOKE', gridIndex: 171, isLong: true, longGenre: 'vocal', lyric: 'Smoke in the air. I cannot see. Lost in the night.' },
-  { id: 'pad-long-phonk-yeah', name: 'Yeah Vocals', nameJa: 'Yeah', category: 'vocal', preset: 'long_vocal_yeah', color: '#ff2288', colorDark: '#aa1155', shortLabel: 'YEAH', gridIndex: 172, isLong: true, longGenre: 'vocal', lyric: 'Yeah. Yeah yeah. Ride that beat all night.' },
-  { id: 'pad-long-phonk-dark', name: 'Dark Vocals', nameJa: 'Dark', category: 'vocal', preset: 'long_vocal_dark', color: '#7722cc', colorDark: '#440088', shortLabel: 'DARK', gridIndex: 173, isLong: true, longGenre: 'vocal', lyric: 'Born in the dark. We ride. We never stop.' },
-  { id: 'pad-long-phonk-ride', name: 'Ride Vocals', nameJa: 'Ride', category: 'vocal', preset: 'long_vocal_ride', color: '#dd1155', colorDark: '#990033', shortLabel: 'RIDE', gridIndex: 174, isLong: true, longGenre: 'vocal', lyric: 'Ride ride ride. Do not stop. Feel the bass drop.' },
+  // ── Example-only pads (Volento-style demo) ──
+  { id: 'pad-ex-volento-kick', name: 'Volento 808', nameJa: 'Volento 808', category: 'kick', preset: 'volento_kick', color: '#aa0022', colorDark: '#660011', shortLabel: 'V808', gridIndex: 900, isExample: true },
+  { id: 'pad-ex-volento-hat', name: 'Volento Hat', nameJa: 'Volento HH', category: 'hat', preset: 'volento_hat', color: '#44aacc', colorDark: '#226688', shortLabel: 'VHH', gridIndex: 901, isExample: true },
+  { id: 'pad-ex-volento-vinyl', name: 'Volento Tape', nameJa: 'Volento Tape', category: 'fx', preset: 'volento_vinyl', color: '#887766', colorDark: '#554433', shortLabel: 'VTAP', gridIndex: 902, isExample: true },
+  { id: 'pad-ex-volento-snare', name: 'Volento Snare', nameJa: 'Volento SN', category: 'snare', preset: 'volento_snare', color: '#dd4422', colorDark: '#992211', shortLabel: 'VSN', gridIndex: 903, isExample: true },
+  { id: 'pad-ex-volento-bass', name: 'Volento Bass', nameJa: 'Volento Bass', category: 'bass', preset: 'volento_bass', color: '#7722cc', colorDark: '#440088', shortLabel: 'VBS', gridIndex: 904, isExample: true },
+  { id: 'pad-ex-volento-memphis', name: 'Volento Lead', nameJa: 'Volento Lead', category: 'synth', preset: 'volento_memphis', color: '#ee2288', colorDark: '#aa1155', shortLabel: 'VLD', gridIndex: 905, isExample: true },
+  { id: 'pad-ex-volento-cow', name: 'Volento Bell', nameJa: 'Volento CB', category: 'cowbell', preset: 'volento_cowbell', color: '#ccaa00', colorDark: '#886600', shortLabel: 'VCB', gridIndex: 906, isExample: true },
+  { id: 'pad-ex-volento-kick-l', name: 'Volento Kick L', nameJa: 'Volento K Loop', category: 'kick', preset: 'long_volento_kick', color: '#bb0022', colorDark: '#770011', shortLabel: 'VKLP', gridIndex: 907, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-snare-l', name: 'Volento Snare L', nameJa: 'Volento SN Loop', category: 'snare', preset: 'long_volento_snare', color: '#cc3311', colorDark: '#881100', shortLabel: 'VSLP', gridIndex: 908, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-hat-l', name: 'Volento Hat L', nameJa: 'Volento HH Loop', category: 'hat', preset: 'long_volento_hat', color: '#3399bb', colorDark: '#115577', shortLabel: 'VHLP', gridIndex: 909, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-bass-l', name: 'Volento Bass L', nameJa: 'Volento Bass Loop', category: 'bass', preset: 'long_volento_bass', color: '#6611bb', colorDark: '#330077', shortLabel: 'VBLP', gridIndex: 910, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-mem-l', name: 'Volento Melo L', nameJa: 'Volento Melo', category: 'synth', preset: 'long_volento_memphis', color: '#dd1188', colorDark: '#990055', shortLabel: 'VMLP', gridIndex: 911, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-cow-l', name: 'Volento Bell L', nameJa: 'Volento CB Loop', category: 'cowbell', preset: 'long_volento_cow', color: '#bbaa00', colorDark: '#776600', shortLabel: 'VCLP', gridIndex: 912, isLong: true, isExample: true },
+  { id: 'pad-ex-volento-gun', name: 'Volento Gun', nameJa: 'Volento Gun', category: 'fx', preset: 'volento_gun', color: '#888888', colorDark: '#444444', shortLabel: 'VGUN', gridIndex: 914, isExample: true },
 ];
 
 export const VIRTUAL_PART_LOOP_ID = 'pad-hat-cl';
@@ -131,7 +131,7 @@ export function getLoopById(id: string): PadDefinition | undefined {
 }
 
 export function getFoundationPads(): PadDefinition[] {
-  return PAD_PACK.filter((p) => p.isFoundation);
+  return PAD_PACK.filter((p) => p.isFoundation && !p.isExample);
 }
 
 export function getFoundationLoops(): PadDefinition[] {
@@ -139,19 +139,18 @@ export function getFoundationLoops(): PadDefinition[] {
 }
 
 export function getLayerPads(excludeIds: string[] = []): PadDefinition[] {
-  return PAD_PACK.filter((p) => !p.isFoundation && !p.isLong && !excludeIds.includes(p.id));
+  return PAD_PACK.filter((p) => !p.isFoundation && !p.isLong && !p.isExample && !excludeIds.includes(p.id));
 }
 
 export function getLongPads(excludeIds: string[] = []): PadDefinition[] {
-  return PAD_PACK.filter((p) => p.isLong && !excludeIds.includes(p.id));
+  return PAD_PACK.filter((p) => p.isLong && !p.isExample && !excludeIds.includes(p.id));
 }
 
-export type LongGenreGroup = 'phonk' | 'edm' | 'vocal' | 'common';
+export type LongGenreGroup = 'phonk' | 'edm' | 'common';
 
 export const LONG_GENRE_LABELS: Record<LongGenreGroup, string> = {
   phonk: '🔥 Phonk（4小節）',
   edm: '🎧 EDM（4小節）',
-  vocal: '🎤 ボーカル（4小節・英語歌詞）',
   common: '🌫 その他（4小節）',
 };
 
@@ -176,13 +175,12 @@ export function getShortPads(excludeIds: string[] = []): PadDefinition[] {
   return PAD_PACK.filter((p) => !p.isFoundation && !p.isLong && !excludeIds.includes(p.id));
 }
 
-export type PadGroup = 'core' | 'phonk' | 'edm' | 'vocal' | 'extra';
+export type PadGroup = 'core' | 'phonk' | 'edm' | 'extra';
 
 const PAD_GROUP_RANGES: Record<PadGroup, [number, number]> = {
   core: [10, 29],
   phonk: [30, 39],
   edm: [40, 59],
-  vocal: [70, 79],
   extra: [60, 69],
 };
 
@@ -190,7 +188,6 @@ export const PAD_GROUP_LABELS: Record<PadGroup, string> = {
   core: '🎹 基本',
   phonk: '🔥 Phonk',
   edm: '🎧 EDM',
-  vocal: '🎤 ボーカル（人間・ロボ）',
   extra: '✨ その他',
 };
 
@@ -204,7 +201,9 @@ export function getLayerLoops(excludeIds: string[] = []): PadDefinition[] {
 }
 
 export function getPadsForGrid(excludeIds: string[] = [], foundationOnly = false): PadDefinition[] {
-  const list = foundationOnly ? getFoundationPads() : PAD_PACK.filter((p) => !excludeIds.includes(p.id));
+  const list = foundationOnly
+    ? getFoundationPads()
+    : PAD_PACK.filter((p) => !p.isExample && !excludeIds.includes(p.id));
   return [...list].sort((a, b) => a.gridIndex - b.gridIndex);
 }
 

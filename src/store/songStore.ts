@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Song, SongWithLayers, SongMode, LayerAddMode } from '@/types';
+import { getExampleSongs, seedExampleBeats } from '@/data/exampleBeats';
 import {
   MAX_CONTRIBUTORS,
   DEFAULT_BARS,
@@ -29,6 +30,8 @@ import {
   getAllLayers,
   getLayersForSong,
   deleteLayer,
+  deleteSong,
+  purgeOpenSongs,
   seedDemoData,
   migrateLegacyData,
   migrateStorageVersion,
@@ -49,6 +52,7 @@ import {
   MIN_TIMELINE_SECTIONS,
   recordDailyLayerSession,
   recordDailyExtendSession,
+  isSongCreator,
 } from '@/lib/plan';
 import { publishSongToFeed } from '@/lib/feed';
 import { VIRTUAL_PART_LOOP_ID } from '@/data/loops';
@@ -62,6 +66,7 @@ interface SongStore {
   deviceId: string;
   openSongs: SongWithLayers[];
   completedSongs: SongWithLayers[];
+  exampleSongs: Song[];
   isPlaying: boolean;
 
   init: () => void;
@@ -88,9 +93,18 @@ interface SongStore {
 
   finishContribution: (songId: string) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
 
+  cancelContribution: (
+    songId: string,
+  ) => { ok: true; deleted: true } | { ok: true; deleted: false; song: SongWithLayers } | { ok: false; reason: string };
+
   updateSectionBpm: (
     songId: string,
     sectionIndex: number,
+    bpm: number,
+  ) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
+
+  updateExampleBpm: (
+    songId: string,
     bpm: number,
   ) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
 
@@ -163,6 +177,7 @@ function buildSongUpdate(song: SongWithLayers, overrides: Partial<Song>): Song {
     challengeTag: song.challengeTag,
     sectionCount: song.sectionCount,
     activeContributorId: song.activeContributorId,
+    activeSessionStartedAt: song.activeSessionStartedAt,
     sectionBpms: song.sectionBpms,
     referenceBpm: song.referenceBpm,
     createdAt: song.createdAt,
@@ -172,18 +187,26 @@ function buildSongUpdate(song: SongWithLayers, overrides: Partial<Song>): Song {
   };
 }
 
+const PURGE_OPEN_SONGS_KEY = 'tsugi-bato-purged-open-songs-v1';
+
 export const useSongStore = create<SongStore>((set, get) => ({
   username: '',
   avatarEmoji: '🎧',
   deviceId: '',
   openSongs: [],
   completedSongs: [],
+  exampleSongs: [],
   isPlaying: false,
 
   init: () => {
     const wipeRemote = migrateStorageVersion();
     seedDemoData();
+    seedExampleBeats();
     migrateLegacyData();
+    if (!localStorage.getItem(PURGE_OPEN_SONGS_KEY)) {
+      purgeOpenSongs();
+      localStorage.setItem(PURGE_OPEN_SONGS_KEY, '1');
+    }
     if (wipeRemote) {
       void import('@/lib/feed').then(({ clearRemoteFeed }) => clearRemoteFeed());
     }
@@ -223,6 +246,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
     set({
       openSongs: getOpenSongs(),
       completedSongs: getCompletedSongs(),
+      exampleSongs: getExampleSongs(),
     });
   },
 
@@ -259,6 +283,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
       sectionCount: 1,
       sectionBpms: [bpm],
       activeContributorId: deviceId,
+      activeSessionStartedAt: now,
       createdAt: now,
       updatedAt: now,
       creatorName: username,
@@ -406,6 +431,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
     }
 
     const now = new Date().toISOString();
+    const startingSession = song.activeContributorId !== deviceId;
     const activeContributorId = deviceId;
 
     const layerSectionBpm = sectionBpms[sectionIndex] ?? song.bpm;
@@ -432,6 +458,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
       sectionCount: newSectionCount,
       sectionBpms,
       activeContributorId,
+      activeSessionStartedAt: startingSession ? now : song.activeSessionStartedAt,
     });
 
     saveSong(updatedSong);
@@ -482,6 +509,30 @@ export const useSongStore = create<SongStore>((set, get) => ({
     return { ok: true, song: full };
   },
 
+  updateExampleBpm: (songId: string, bpm: number) => {
+    const song = getSongWithLayers(songId);
+    if (!song) {
+      return { ok: false, reason: 'songNotFound' };
+    }
+    if (!song.isExample) {
+      return { ok: false, reason: 'notExample' };
+    }
+    if (bpm < MIN_BPM || bpm > MAX_BPM) {
+      return { ok: false, reason: `bpmOutOfRange|${MIN_BPM}|${MAX_BPM}` };
+    }
+
+    const sectionBpms = Array.from({ length: song.sectionCount }, () => bpm);
+    saveSong(buildSongUpdate(song, { bpm, sectionBpms }));
+
+    for (let i = 0; i < song.sectionCount; i++) {
+      resizeSectionLayerPatterns(songId, i, bpm);
+    }
+
+    const full = getSongWithLayers(songId)!;
+    get().refreshLists();
+    return { ok: true, song: full };
+  },
+
   finishContribution: (songId: string) => {
     const song = getSongWithLayers(songId);
     if (!song) {
@@ -500,6 +551,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
 
     const updatedSong = buildSongUpdate(song, {
       activeContributorId: undefined,
+      activeSessionStartedAt: undefined,
       sectionBpms: getSectionBpms(song),
     });
 
@@ -516,6 +568,64 @@ export const useSongStore = create<SongStore>((set, get) => ({
     get().refreshLists();
 
     return { ok: true, song: full };
+  },
+
+  cancelContribution: (songId: string) => {
+    const song = getSongWithLayers(songId);
+    if (!song) {
+      return { ok: false, reason: 'songNotFound' };
+    }
+    if (song.isExample) {
+      return { ok: false, reason: 'cannotCancelExample' };
+    }
+    if (song.status === 'complete') {
+      return { ok: false, reason: 'cannotCancelComplete' };
+    }
+
+    const deviceId = resolveDeviceId(get().deviceId);
+    if (song.activeContributorId !== deviceId) {
+      return { ok: false, reason: 'notYourSession' };
+    }
+
+    const sessionStartedAt = song.activeSessionStartedAt ?? song.createdAt;
+    const sessionLayers = getUserLayers(song.layers, deviceId).filter(
+      (l) => l.addedAt >= sessionStartedAt,
+    );
+    if (sessionLayers.length === 0) {
+      return { ok: false, reason: 'noLayersAdded' };
+    }
+
+    for (const layer of sessionLayers) {
+      deleteLayer(layer.id);
+    }
+
+    const remaining = getLayersForSong(songId);
+    const realRemaining = remaining.filter((l) => !l.isVirtual);
+    const otherContributors = remaining.some(
+      (l) => !l.isVirtual && l.contributorId && l.contributorId !== deviceId,
+    );
+
+    if (realRemaining.length === 0 || (isSongCreator(song.layers, deviceId) && !otherContributors)) {
+      deleteSong(songId);
+      get().refreshLists();
+      return { ok: true, deleted: true };
+    }
+
+    const newSectionCount = Math.min(
+      Math.max(1, ...remaining.map((l) => l.sectionIndex + 1)),
+      getMaxSections(),
+    );
+    const updatedSong = buildSongUpdate(song, {
+      sectionCount: newSectionCount,
+      sectionBpms: getSectionBpms({ ...song, sectionCount: newSectionCount }).slice(0, newSectionCount),
+      activeContributorId: undefined,
+      activeSessionStartedAt: undefined,
+    });
+    saveSong(updatedSong);
+
+    const full = getSongWithLayers(songId)!;
+    get().refreshLists();
+    return { ok: true, deleted: false, song: full };
   },
 
   removeLayer: (songId: string, layerId: string) => {

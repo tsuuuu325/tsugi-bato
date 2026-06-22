@@ -3,7 +3,6 @@
  */
 
 import { getPadById } from '@/data/loops';
-import { ensureVocalSamplesLoaded, getSampleBuffer } from '@/audio/sampleLoader';
 import type { StepPattern } from '@/types';
 import { STEPS_PER_BAR, LONG_LOOP_STEPS, LONG_LOOP_BARS, BEATS_PER_BAR, DEFAULT_BPM, getSectionStepMs, getAbsoluteSpeedRatio, getSectionTotalSteps, resizeStepPattern } from '@/types';
 
@@ -23,16 +22,13 @@ export interface PlayTrack {
 }
 
 interface PresetConfig {
-  kind: 'kick' | 'hat' | 'snare' | 'clap' | 'bass' | 'synth' | 'fx' | 'perc' | 'cowbell' | 'vinyl' | 'reese' | 'vocal' | 'sample';
+  kind: 'kick' | 'hat' | 'snare' | 'clap' | 'bass' | 'synth' | 'fx' | 'perc' | 'cowbell' | 'vinyl' | 'reese';
   pattern: StepPattern;
   notes?: number[];
   volume: number;
   release: number;
   pitch?: number;
   fxStyle?: 'gun' | 'siren' | 'reverse';
-  vocalStyle?: 'human' | 'robot' | 'phonk';
-  /** 実音声サンプルID（kind: sample） */
-  sampleId?: string;
 }
 
 function pat(...steps: number[]): StepPattern {
@@ -79,7 +75,7 @@ function notes4(b0: number[], b1?: number[], b2?: number[], b3?: number[]): numb
   return out;
 }
 
-/** 4小節ループの先頭で1回だけサンプルを鳴らす */
+/** 4小節ループの先頭で1回だけ鳴らす（将来のサンプル用・未使用） */
 function patLoopStart(): StepPattern {
   const p = Array(LONG_LOOP_STEPS).fill(0) as StepPattern;
   p[0] = 1;
@@ -215,6 +211,116 @@ const PRESETS: Record<string, PresetConfig> = {
   synth_memphis: { kind: 'synth', pattern: pat(0, 3, 6, 8, 11, 14), notes: [63, 63, 66, 63, 68, 63, 66, 63, 63, 63, 66, 63, 68, 63, 66, 60], volume: 0.4, release: 0.18 },
   fx_gun: { kind: 'fx', pattern: pat(0, 8), volume: 0.45, release: 0.08, pitch: 200, fxStyle: 'gun' },
   vinyl_crackle: { kind: 'vinyl', pattern: every(2), volume: 0.1, release: 0.04 },
+
+  // Volento-style drift phonk (example beat)
+  volento_kick: {
+    kind: 'kick',
+    pattern: pat(0, 4, 7, 8, 12, 14),
+    volume: 1.0,
+    release: 0.98,
+    pitch: 105,
+  },
+  volento_snare: {
+    kind: 'snare',
+    pattern: pat(4, 12, 14),
+    volume: 0.84,
+    release: 0.26,
+  },
+  volento_hat: {
+    kind: 'hat',
+    pattern: pat(2, 5, 7, 8, 10, 12, 13, 15),
+    volume: 0.26,
+    release: 0.022,
+  },
+  volento_bass: {
+    kind: 'bass',
+    pattern: pat(0, 2, 4, 6, 8, 10, 12, 14),
+    notes: [28, 28, 31, 28, 28, 32, 28, 28, 28, 28, 31, 28, 28, 32, 28, 28],
+    volume: 0.94,
+    release: 0.68,
+  },
+  volento_memphis: {
+    kind: 'synth',
+    pattern: pat(0, 3, 6, 8, 11, 14),
+    notes: [51, 51, 54, 51, 56, 51, 54, 51, 51, 51, 54, 51, 56, 51, 54, 48],
+    volume: 0.44,
+    release: 0.16,
+  },
+  volento_cowbell: {
+    kind: 'cowbell',
+    pattern: pat(0, 3, 6, 9, 12, 15),
+    pitch: 560,
+    volume: 0.66,
+    release: 0.11,
+  },
+  volento_vinyl: {
+    kind: 'vinyl',
+    pattern: every(1),
+    volume: 0.13,
+    release: 0.06,
+  },
+  volento_gun: {
+    kind: 'fx',
+    pattern: pat(0, 8),
+    volume: 0.42,
+    release: 0.07,
+    fxStyle: 'gun',
+  },
+  long_volento_kick: {
+    kind: 'kick',
+    pattern: pat4([0, 4, 8, 12], [0, 3, 6, 8, 11, 14], [0, 4, 7, 8, 12, 15], [0, 2, 4, 8, 10, 12, 14]),
+    volume: 0.98,
+    release: 0.95,
+    pitch: 105,
+  },
+  long_volento_snare: {
+    kind: 'snare',
+    pattern: pat4([4, 12, 14], [4, 6, 10, 12, 14], [4, 7, 12, 14, 15], [4, 6, 8, 10, 12, 14, 15]),
+    volume: 0.8,
+    release: 0.24,
+  },
+  long_volento_hat: {
+    kind: 'hat',
+    pattern: pat4(
+      [2, 5, 7, 8, 10, 12, 13, 15],
+      [2, 4, 6, 8, 10, 12, 14, 15],
+      [2, 5, 7, 8, 10, 12, 13, 15],
+      [2, 4, 6, 8, 10, 12, 13, 14, 15],
+    ),
+    volume: 0.28,
+    release: 0.024,
+  },
+  long_volento_bass: {
+    kind: 'bass',
+    pattern: pat4([0, 2, 4, 6, 8, 10, 12, 14], [0, 3, 6, 8, 11, 14], [0, 2, 4, 7, 8, 10, 12, 15], [0, 2, 4, 6, 8, 10, 12, 14]),
+    notes: notes4(
+      barNotes(28, 28, 31, 28, 28, 32, 28, 28, 28, 28, 31, 28, 28, 32, 28, 28),
+      barNotes(28, 28, 31, 28, 32, 28, 31, 28, 28, 31, 32, 28, 28, 32, 28, 27),
+      barNotes(27, 28, 31, 28, 28, 32, 31, 28, 28, 28, 31, 32, 28, 32, 28, 26),
+      barNotes(28, 28, 31, 28, 28, 32, 28, 28, 28, 28, 31, 28, 28, 32, 28, 26),
+    ),
+    volume: 0.92,
+    release: 0.65,
+  },
+  long_volento_memphis: {
+    kind: 'synth',
+    pattern: pat4([0, 3, 6, 8, 11, 14], [0, 2, 4, 6, 10, 12, 14], [0, 3, 6, 9, 12, 15], [0, 2, 4, 6, 8, 11, 14]),
+    notes: notes4(
+      barNotes(51, 51, 54, 51, 56, 51, 54, 51, 51, 51, 54, 51, 56, 51, 54, 48),
+      barNotes(51, 54, 56, 51, 54, 56, 58, 56, 51, 54, 56, 51, 54, 51, 48, 46),
+      barNotes(48, 51, 54, 56, 54, 51, 48, 51, 54, 56, 58, 56, 54, 51, 48, 46),
+      barNotes(51, 51, 54, 51, 56, 51, 54, 51, 51, 54, 56, 51, 54, 51, 48, 44),
+    ),
+    volume: 0.46,
+    release: 0.18,
+  },
+  long_volento_cow: {
+    kind: 'cowbell',
+    pattern: pat4([0, 3, 6, 8, 11, 14], [0, 2, 4, 6, 8, 10, 12, 14], [0, 3, 6, 9, 12, 15], [0, 2, 4, 6, 8, 10, 12, 14]),
+    pitch: 560,
+    volume: 0.58,
+    release: 0.13,
+  },
 
   // EDM
   kick_bigroom: { kind: 'kick', pattern: pat(0, 4, 8, 12), volume: 0.96, release: 0.48, pitch: 175 },
@@ -508,21 +614,6 @@ const PRESETS: Record<string, PresetConfig> = {
     volume: 0.26,
     release: 3.4,
   },
-
-  // Vocal — short（人間 / ロボ）
-  vocal_human_hey: { kind: 'vocal', pattern: pat(0, 8), notes: barNotes(64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64), volume: 0.62, release: 0.28, vocalStyle: 'human', pitch: 64 },
-  vocal_human_yeah: { kind: 'vocal', pattern: pat(0, 4, 8, 12), notes: barNotes(62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62, 62), volume: 0.58, release: 0.32, vocalStyle: 'human', pitch: 62 },
-  vocal_human_oi: { kind: 'vocal', pattern: pat(0, 6, 10), notes: barNotes(67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67, 67), volume: 0.65, release: 0.22, vocalStyle: 'human', pitch: 67 },
-  vocal_robot_beep: { kind: 'vocal', pattern: pat(0, 8), notes: barNotes(72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72), volume: 0.52, release: 0.18, vocalStyle: 'robot', pitch: 72 },
-  vocal_robot_talk: { kind: 'vocal', pattern: pat(0, 3, 6, 9, 12, 15), notes: barNotes(60, 63, 60, 58, 60, 63, 65, 63, 60, 58, 55, 58, 60, 63, 60, 58), volume: 0.5, release: 0.14, vocalStyle: 'robot', pitch: 60 },
-  vocal_robot_alert: { kind: 'vocal', pattern: pat(0, 4, 8), notes: barNotes(68, 65, 68, 65, 68, 65, 68, 65, 68, 65, 68, 65, 68, 65, 68, 65), volume: 0.55, release: 0.12, vocalStyle: 'robot', pitch: 68 },
-
-  // Vocal — 4小節（実音声・英語歌詞）
-  long_vocal_drift: { kind: 'sample', sampleId: 'drift', pattern: patLoopStart(), volume: 0.88, release: 1 },
-  long_vocal_smoke: { kind: 'sample', sampleId: 'smoke', pattern: patLoopStart(), volume: 0.86, release: 1 },
-  long_vocal_yeah: { kind: 'sample', sampleId: 'yeah', pattern: patLoopStart(), volume: 0.9, release: 1 },
-  long_vocal_dark: { kind: 'sample', sampleId: 'dark', pattern: patLoopStart(), volume: 0.87, release: 1 },
-  long_vocal_ride: { kind: 'sample', sampleId: 'ride', pattern: patLoopStart(), volume: 0.89, release: 1 },
 };
 
 function triggerKick(ctx: AudioContext, preset: PresetConfig, t: number) {
@@ -693,240 +784,6 @@ function triggerSynth(ctx: AudioContext, preset: PresetConfig, t: number, step: 
   connectToOut(ctx, f);
 }
 
-const HUMAN_FORMANTS: [number, number, number] = [900, 1400, 2800];
-
-function triggerHumanVoice(ctx: AudioContext, preset: PresetConfig, t: number, step: number) {
-  const rel = preset.release;
-  const noteLen = preset.notes?.length ?? STEPS_PER_BAR;
-  const midi = preset.notes?.[step % noteLen] ?? preset.pitch ?? 64;
-  const f0 = midiToHz(midi);
-  const pitchScale = Math.pow(f0 / midiToHz(64), 0.4);
-
-  const mix = ctx.createGain();
-  mix.gain.setValueAtTime(0, t);
-  mix.gain.linearRampToValueAtTime(preset.volume * 0.7, t + 0.012);
-  mix.gain.setValueAtTime(preset.volume * 0.65, t + 0.05);
-  mix.gain.exponentialRampToValueAtTime(0.001, t + rel);
-
-  const exciter = ctx.createGain();
-  exciter.gain.value = 1;
-
-  for (let h = 1; h <= 8; h++) {
-    const osc = ctx.createOscillator();
-    osc.type = h <= 2 ? 'sawtooth' : 'square';
-    osc.frequency.setValueAtTime(f0 * h * 1.35, t);
-    osc.frequency.exponentialRampToValueAtTime(f0 * h, t + 0.05);
-    const g = ctx.createGain();
-    g.gain.value = (h <= 2 ? 0.28 : 0.12) / h;
-    osc.connect(g);
-    g.connect(exciter);
-    osc.start(t);
-    osc.stop(t + rel + 0.05);
-  }
-
-  const vib = ctx.createOscillator();
-  vib.type = 'sine';
-  vib.frequency.value = 5.5;
-  const vibAmt = ctx.createGain();
-  vibAmt.gain.value = f0 * 0.04;
-  vib.connect(vibAmt);
-  vibAmt.connect(exciter.gain);
-  vib.start(t);
-  vib.stop(t + rel + 0.05);
-
-  const noiseLen = Math.max(1, Math.floor(ctx.sampleRate * Math.min(rel, 0.2)));
-  const nbuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
-  const nd = nbuf.getChannelData(0);
-  for (let i = 0; i < noiseLen; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / noiseLen);
-  const noise = ctx.createBufferSource();
-  noise.buffer = nbuf;
-  const nhp = ctx.createBiquadFilter();
-  nhp.type = 'highpass';
-  nhp.frequency.value = 2000;
-  const ng = ctx.createGain();
-  ng.gain.value = preset.volume * 0.22;
-  noise.connect(nhp);
-  nhp.connect(ng);
-  ng.connect(mix);
-  noise.start(t);
-
-  const formMix = ctx.createGain();
-  formMix.gain.value = 1;
-  const weights = [0.55, 0.35, 0.22];
-  for (let fi = 0; fi < 3; fi++) {
-    const bpf = ctx.createBiquadFilter();
-    bpf.type = 'bandpass';
-    bpf.frequency.value = HUMAN_FORMANTS[fi] * pitchScale;
-    bpf.Q.value = fi === 0 ? 2.5 : 4.5;
-    const fg = ctx.createGain();
-    fg.gain.value = weights[fi];
-    exciter.connect(bpf);
-    bpf.connect(fg);
-    fg.connect(formMix);
-  }
-
-  const clip = ctx.createWaveShaper();
-  clip.curve = makeDistortionCurve(32);
-  clip.oversample = '4x';
-  formMix.connect(clip);
-  clip.connect(mix);
-
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 5200;
-  mix.connect(lp);
-  connectToOut(ctx, lp);
-}
-
-function triggerRobotVoice(ctx: AudioContext, preset: PresetConfig, t: number, step: number) {
-  const rel = preset.release;
-  const noteLen = preset.notes?.length ?? STEPS_PER_BAR;
-  const midi = preset.notes?.[step % noteLen] ?? preset.pitch ?? 60;
-  const f0 = midiToHz(midi);
-
-  const mix = ctx.createGain();
-  mix.gain.setValueAtTime(0, t);
-  mix.gain.linearRampToValueAtTime(preset.volume, t + 0.004);
-  mix.gain.exponentialRampToValueAtTime(0.001, t + rel);
-
-  const carrier = ctx.createOscillator();
-  carrier.type = 'square';
-  carrier.frequency.value = f0;
-
-  const mod = ctx.createOscillator();
-  mod.type = 'square';
-  mod.frequency.value = 48 + (step % 3) * 17;
-
-  const ring = ctx.createGain();
-  ring.gain.value = 0;
-  mod.connect(ring.gain);
-  carrier.connect(ring);
-
-  const metallic = ctx.createBiquadFilter();
-  metallic.type = 'bandpass';
-  metallic.frequency.value = Math.min(4000, f0 * 3.5);
-  metallic.Q.value = 12;
-
-  const bitcrush = ctx.createWaveShaper();
-  const steps = 8;
-  const crushCurve = new Float32Array(256);
-  for (let i = 0; i < 256; i++) {
-    const x = (i * 2) / 256 - 1;
-    crushCurve[i] = Math.round(x * steps) / steps;
-  }
-  bitcrush.curve = crushCurve;
-  bitcrush.oversample = 'none';
-
-  const clip = ctx.createWaveShaper();
-  clip.curve = makeDistortionCurve(48);
-  clip.oversample = '2x';
-
-  ring.connect(metallic);
-  metallic.connect(bitcrush);
-  bitcrush.connect(clip);
-  clip.connect(mix);
-
-  const robo2 = ctx.createOscillator();
-  robo2.type = 'square';
-  robo2.frequency.value = f0 * 0.5;
-  const robo2g = ctx.createGain();
-  robo2g.gain.setValueAtTime(preset.volume * 0.35, t);
-  robo2g.gain.exponentialRampToValueAtTime(0.001, t + rel * 0.8);
-  robo2.connect(robo2g);
-  robo2g.connect(mix);
-
-  carrier.start(t);
-  carrier.stop(t + rel + 0.05);
-  mod.start(t);
-  mod.stop(t + rel + 0.05);
-  robo2.start(t);
-  robo2.stop(t + rel + 0.05);
-
-  connectToOut(ctx, mix);
-}
-
-function triggerPhonkVocal(ctx: AudioContext, preset: PresetConfig, t: number, step: number) {
-  const rel = Math.min(preset.release, 0.36);
-  const noteLen = preset.notes?.length ?? STEPS_PER_BAR;
-  const midi = preset.notes?.[step % noteLen] ?? preset.pitch ?? 52;
-  const f0 = midiToHz(midi) * 0.88;
-  const pitchScale = Math.pow(f0 / midiToHz(50), 0.35);
-
-  const mix = ctx.createGain();
-  mix.gain.setValueAtTime(0, t);
-  mix.gain.linearRampToValueAtTime(preset.volume * 0.82, t + 0.006);
-  mix.gain.setValueAtTime(preset.volume * 0.75, t + 0.04);
-  mix.gain.exponentialRampToValueAtTime(0.001, t + rel);
-
-  const exciter = ctx.createGain();
-  exciter.gain.value = 1;
-
-  for (let h = 1; h <= 6; h++) {
-    const osc = ctx.createOscillator();
-    osc.type = h === 1 ? 'sawtooth' : 'square';
-    osc.frequency.setValueAtTime(f0 * h * 1.5, t);
-    osc.frequency.exponentialRampToValueAtTime(f0 * h * 0.95, t + 0.04);
-    const g = ctx.createGain();
-    g.gain.value = (h === 1 ? 0.32 : 0.14) / h;
-    osc.connect(g);
-    g.connect(exciter);
-    osc.start(t);
-    osc.stop(t + rel + 0.05);
-  }
-
-  const sub = ctx.createOscillator();
-  sub.type = 'sine';
-  sub.frequency.value = f0 * 0.5;
-  const subG = ctx.createGain();
-  subG.gain.setValueAtTime(preset.volume * 0.28, t);
-  subG.gain.exponentialRampToValueAtTime(0.001, t + rel * 0.9);
-  sub.connect(subG);
-  subG.connect(mix);
-  sub.start(t);
-  sub.stop(t + rel + 0.05);
-
-  noiseBurst(ctx, t, Math.min(rel, 0.06), preset.volume * 0.18, 2800);
-  noiseBurst(ctx, t + 0.01, Math.min(rel * 0.5, 0.04), preset.volume * 0.1, 6000);
-
-  const phonkFormants: [number, number, number] = [620, 980, 2100];
-  const formMix = ctx.createGain();
-  formMix.gain.value = 1;
-  for (let fi = 0; fi < 3; fi++) {
-    const bpf = ctx.createBiquadFilter();
-    bpf.type = 'bandpass';
-    bpf.frequency.value = phonkFormants[fi] * pitchScale;
-    bpf.Q.value = fi === 0 ? 3 : 5;
-    const fg = ctx.createGain();
-    fg.gain.value = [0.58, 0.38, 0.2][fi];
-    exciter.connect(bpf);
-    bpf.connect(fg);
-    fg.connect(formMix);
-  }
-
-  const clip = ctx.createWaveShaper();
-  clip.curve = makeDistortionCurve(52);
-  clip.oversample = '4x';
-  formMix.connect(clip);
-  clip.connect(mix);
-
-  const loFi = ctx.createBiquadFilter();
-  loFi.type = 'bandpass';
-  loFi.frequency.value = 1400 * pitchScale;
-  loFi.Q.value = 0.65;
-  mix.connect(loFi);
-  connectToOut(ctx, loFi);
-}
-
-function triggerVocal(ctx: AudioContext, preset: PresetConfig, t: number, step: number) {
-  if (preset.vocalStyle === 'robot') {
-    triggerRobotVoice(ctx, preset, t, step);
-  } else if (preset.vocalStyle === 'phonk') {
-    triggerPhonkVocal(ctx, preset, t, step);
-  } else {
-    triggerHumanVoice(ctx, preset, t, step);
-  }
-}
-
 function triggerReese(ctx: AudioContext, preset: PresetConfig, t: number, step: number) {
   const rel = preset.release;
   const midi = preset.notes?.[step] ?? 28;
@@ -1062,62 +919,7 @@ function triggerVinyl(ctx: AudioContext, preset: PresetConfig, t: number) {
   noiseBurst(ctx, t + preset.release * 0.3, preset.release * 0.5, preset.volume * 0.6, 3500);
 }
 
-const activeSampleSources: AudioBufferSourceNode[] = [];
-
-function stopAllSamples(): void {
-  for (const src of activeSampleSources) {
-    try { src.stop(); } catch { /* already stopped */ }
-  }
-  activeSampleSources.length = 0;
-}
-
-function registerSampleSource(src: AudioBufferSourceNode): void {
-  activeSampleSources.push(src);
-  src.onended = () => {
-    const i = activeSampleSources.indexOf(src);
-    if (i >= 0) activeSampleSources.splice(i, 1);
-  };
-}
-
-function triggerSample(
-  ctx: AudioContext,
-  preset: PresetConfig,
-  t: number,
-  playbackRate: number,
-  sectionBpm = DEFAULT_BPM,
-): AudioBufferSourceNode | null {
-  if (!preset.sampleId) return null;
-  const buffer = getSampleBuffer(preset.sampleId);
-  if (!buffer) return null;
-
-  const loopDuration = LONG_LOOP_BARS * BEATS_PER_BAR * 60 / sectionBpm;
-  const phonkPitch = 0.9;
-  const rate = Math.min(4, Math.max(0.25, (buffer.duration / loopDuration) * phonkPitch * playbackRate));
-  const playDuration = buffer.duration / rate;
-
-  const src = ctx.createBufferSource();
-  src.buffer = buffer;
-  src.playbackRate.value = rate;
-
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 3400;
-
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(preset.volume, t + 0.03);
-  g.gain.setValueAtTime(preset.volume, t + Math.max(0.05, playDuration - 0.08));
-  g.gain.linearRampToValueAtTime(0.001, t + playDuration);
-
-  src.connect(lp);
-  lp.connect(g);
-  connectToOut(ctx, g);
-  src.start(t);
-  registerSampleSource(src);
-  return src;
-}
-
-function triggerStep(ctx: AudioContext, preset: PresetConfig, time: number, step: number, playbackRate = 1, sectionBpm = DEFAULT_BPM) {
+function triggerStep(ctx: AudioContext, preset: PresetConfig, time: number, step: number, playbackRate = 1, _sectionBpm = DEFAULT_BPM) {
   const t = time;
   const scaled: PresetConfig = playbackRate === 1
     ? preset
@@ -1144,8 +946,6 @@ function triggerStep(ctx: AudioContext, preset: PresetConfig, time: number, step
     case 'perc': triggerPerc(ctx, scaled, t); break;
     case 'vinyl': triggerVinyl(ctx, scaled, t); break;
     case 'reese': triggerReese(ctx, scaled, t, step); break;
-    case 'vocal': triggerVocal(ctx, scaled, t, step); break;
-    case 'sample': triggerSample(ctx, scaled, t, playbackRate, sectionBpm); break;
   }
 }
 
@@ -1248,18 +1048,6 @@ export class AudioEngine {
     const preset = getPresetForPad(padId);
     if (!preset) return;
 
-    if (preset.kind === 'sample') {
-      const ctx = await this.ensureCtx();
-      await ensureVocalSamplesLoaded(ctx);
-      this.stop();
-      this.playing = true;
-      this.previewMode = true;
-      const durationSec = LONG_LOOP_BARS * BEATS_PER_BAR * 60 / bpm;
-      triggerSample(ctx, preset, ctx.currentTime + 0.02, getAbsoluteSpeedRatio(bpm), bpm);
-      this.previewStopTimer = setTimeout(() => this.stop(), durationSec * 1000);
-      return;
-    }
-
     const pattern = getDefaultPattern(padId);
     this.stop();
     await this.ensureCtx();
@@ -1324,9 +1112,6 @@ export class AudioEngine {
     await this.ensureCtx();
     const built = this.buildTracks(tracks);
     if (built.length === 0) return;
-    if (built.some((t) => t.preset.kind === 'sample')) {
-      await ensureVocalSamplesLoaded(this.ctx!);
-    }
     this.tracks = built;
     this.sectionCount = Math.max(1, sectionCount);
     this.baseBpm = baseBpm;
@@ -1364,7 +1149,6 @@ export class AudioEngine {
   stop(): void {
     if (this.tickTimer) { clearTimeout(this.tickTimer); this.tickTimer = null; }
     if (this.previewStopTimer) { clearTimeout(this.previewStopTimer); this.previewStopTimer = null; }
-    stopAllSamples();
     this.tickFn = null;
     this.previewMode = false;
     this.previewMaxSteps = 0;

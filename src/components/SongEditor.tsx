@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { DrumPadGrid } from '@/components/DrumPadGrid';
 import { PadSequencer } from '@/components/PadSequencer';
 import { Transport } from '@/components/Transport';
@@ -53,8 +53,10 @@ export function SongEditor({
   initialAddMode = null,
 }: SongEditorProps) {
   const { t, translateError, formatPart, formatSection, addModeTitle } = useI18n();
+  const navigate = useNavigate();
   const addLayer = useSongStore((s) => s.addLayer);
   const finishContribution = useSongStore((s) => s.finishContribution);
+  const cancelContribution = useSongStore((s) => s.cancelContribution);
   const completeSong = useSongStore((s) => s.completeSong);
   const removeLayer = useSongStore((s) => s.removeLayer);
   const updateSectionBpm = useSongStore((s) => s.updateSectionBpm);
@@ -74,14 +76,14 @@ export function SongEditor({
     () => getFoundationPads().filter((p) => !usedPadIds.includes(p.id)),
     [usedPadIds.join(',')],
   );
-  const shortPadGroups: PadGroup[] = ['core', 'phonk', 'edm', 'vocal', 'extra'];
+  const shortPadGroups: PadGroup[] = ['core', 'phonk', 'edm', 'extra'];
   const padsByGroup = useMemo(
     () => Object.fromEntries(
       shortPadGroups.map((g) => [g, getPadsByGroup(g, usedPadIds)]),
     ) as Record<PadGroup, ReturnType<typeof getPadsByGroup>>,
     [usedPadIds.join(',')],
   );
-  const longPadGroups: LongGenreGroup[] = ['phonk', 'edm', 'vocal', 'common'];
+  const longPadGroups: LongGenreGroup[] = ['phonk', 'edm', 'common'];
   const longPadsByGroup = useMemo(
     () => Object.fromEntries(
       longPadGroups.map((g) => [g, getLongPadsByGenre(g, usedPadIds)]),
@@ -106,6 +108,8 @@ export function SongEditor({
   const lockedTargetSection = getLockedTargetSection(song, song.layers, deviceId);
   const isExtendSession = effectiveAddMode === 'extend' || lockedMode === 'extend';
   const inSession = song.activeContributorId === deviceId && sessionLayers.length > 0;
+  const canCancelSession = !readOnly && !song.isExample && song.status === 'open'
+    && song.activeContributorId === deviceId;
   const canPickContributionMode = canAdd && isPendingContributionModeChoice(song, song.layers, deviceId);
   const awaitingModePick = canPickContributionMode && !addMode;
   const modeChosen = isMultiSoundSession || lockedMode != null || addMode != null;
@@ -286,6 +290,22 @@ export function SongEditor({
     }
   };
 
+  const handleCancel = () => {
+    if (!window.confirm(t('editor.cancelConfirm'))) return;
+    setMessage('');
+    const result = cancelContribution(song.id);
+    if (!result.ok) {
+      setMessage(`⚠️ ${translateError(result.reason)}`);
+      return;
+    }
+    if (result.deleted) {
+      navigate('/');
+      return;
+    }
+    onSongUpdate(result.song);
+    navigate('/');
+  };
+
   const handlePublish = () => {
     setMessage('');
     const result = completeSong(song.id);
@@ -357,6 +377,13 @@ export function SongEditor({
 
       {slotsOpen && canAdd && (
         <section className="editor-toolbar" id="editor-toolbar">
+          {canCancelSession && (
+            <div className="editor-cancel-bar">
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+                {t('editor.cancel')}
+              </button>
+            </div>
+          )}
           <p className="editor-toolbar-label">
             {isCreatorLayering
               ? t('editor.foundationLayering', { count: sessionLayers.length })
@@ -527,6 +554,11 @@ export function SongEditor({
             {inSession && (
               <button type="button" className="btn btn-secondary" onClick={handleFinish}>
                 {song.mode === 'collab' && !isSolo ? t('editor.finishPass') : t('editor.finishShort')}
+              </button>
+            )}
+            {canCancelSession && (
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+                {t('editor.cancel')}
               </button>
             )}
           </div>
