@@ -58,8 +58,14 @@ async function invokeFunction<T>(name: string, body: unknown): Promise<{ data: T
   }
 }
 
-export async function fetchSubscription(deviceId: string): Promise<SubscriptionInfo | null> {
-  const { data } = await invokeFunction<SubscriptionInfo>('get-subscription', { deviceId });
+export async function fetchSubscription(
+  deviceId: string,
+  email?: string,
+): Promise<SubscriptionInfo | null> {
+  const body: { deviceId: string; email?: string } = { deviceId };
+  const normalized = email?.trim();
+  if (normalized) body.email = normalized;
+  const { data } = await invokeFunction<SubscriptionInfo>('get-subscription', body);
   return data;
 }
 
@@ -103,11 +109,11 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   return info.status === 'active' || info.status === 'trialing';
 }
 
-export async function syncProPlanFromServer(deviceId: string): Promise<UserPlan> {
+export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
   if (!billingEnabled() || !deviceId) {
     return getUserProfile().plan ?? 'free';
   }
-  const sub = await fetchSubscription(deviceId);
+  const sub = await fetchSubscription(deviceId, email);
   const plan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
   const profile = getUserProfile();
   if (profile.plan !== plan) {

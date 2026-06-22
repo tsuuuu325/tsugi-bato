@@ -1,5 +1,6 @@
 import Stripe from 'https://esm.sh/stripe@17.4.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { subscriptionPeriodEndIso } from '../_shared/subscription.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2024-11-20.acacia',
@@ -24,7 +25,7 @@ async function upsertFromSubscription(
     stripe_subscription_id: sub.id,
     status: sub.status,
     cancel_at_period_end: sub.cancel_at_period_end,
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_end: subscriptionPeriodEndIso(sub),
     customer_email: contact?.email ?? undefined,
     customer_name: contact?.name ?? undefined,
     updated_at: new Date().toISOString(),

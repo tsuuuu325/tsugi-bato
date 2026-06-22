@@ -25,7 +25,7 @@ export function ProPage() {
   const [billingEmail, setBillingEmail] = useState('');
   const [billingName, setBillingName] = useState('');
   const billingReady = isBillingConfigured();
-  const isPro = isProPlan();
+  const isPro = isProPlan() || sub?.status === 'active' || sub?.status === 'trialing';
 
   useEffect(() => { init(); }, [init]);
 
@@ -36,11 +36,7 @@ export function ProPage() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get('success') === '1') {
-      setMessage(t('billing.success'));
-      searchParams.delete('success');
-      setSearchParams(searchParams, { replace: true });
-    } else if (searchParams.get('canceled') === '1') {
+    if (searchParams.get('canceled') === '1') {
       setMessage(t('billing.canceled'));
       searchParams.delete('canceled');
       setSearchParams(searchParams, { replace: true });
@@ -48,11 +44,62 @@ export function ProPage() {
   }, [searchParams, setSearchParams, t]);
 
   useEffect(() => {
+    if (searchParams.get('success') !== '1') return;
     if (!deviceId || !billingReady) return;
-    syncProPlanFromServer(deviceId).then(() => {
-      fetchSubscription(deviceId).then(setSub);
+
+    setMessage(t('billing.success'));
+    void (async () => {
+      const contactEmail = billingEmail.trim() || getUserProfile().billingEmail || '';
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await syncProPlanFromServer(deviceId, contactEmail || undefined);
+        const info = await fetchSubscription(deviceId, contactEmail || undefined);
+        setSub(info);
+        if (info?.status === 'active' || info?.status === 'trialing') {
+          searchParams.delete('success');
+          setSearchParams(searchParams, { replace: true });
+          return;
+        }
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
+      }
+      setMessage(t('billing.syncPending'));
+      searchParams.delete('success');
+      setSearchParams(searchParams, { replace: true });
+    })();
+  }, [searchParams, setSearchParams, t, deviceId, billingReady, billingEmail]);
+
+  useEffect(() => {
+    if (!deviceId || !billingReady) return;
+    if (searchParams.get('success') === '1') return;
+    const contactEmail = billingEmail.trim() || getUserProfile().billingEmail || '';
+    syncProPlanFromServer(deviceId, contactEmail || undefined).then(() => {
+      fetchSubscription(deviceId, contactEmail || undefined).then(setSub);
     });
-  }, [deviceId, billingReady, message]);
+  }, [deviceId, billingReady, searchParams, billingEmail]);
+
+  const handleRestore = async () => {
+    if (!deviceId) return;
+    if (!billingReady) {
+      setMessage(t('billing.notConfigured'));
+      return;
+    }
+    const email = billingEmail.trim() || getUserProfile().billingEmail || '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setMessage(t('billing.emailInvalid'));
+      return;
+    }
+    setBillingContact(email, billingName.trim() || getUserProfile().billingName || '');
+    setLoading(true);
+    setMessage('');
+    const plan = await syncProPlanFromServer(deviceId, email);
+    const info = await fetchSubscription(deviceId, email);
+    setSub(info);
+    setLoading(false);
+    if (plan === 'pro' || info?.status === 'active' || info?.status === 'trialing') {
+      setMessage(t('billing.active'));
+      return;
+    }
+    setMessage(t('billing.restoreFailed'));
+  };
 
   const handleSubscribe = async () => {
     if (!deviceId) return;
@@ -169,6 +216,10 @@ export function ProPage() {
             <button type="button" className="btn btn-primary btn-large" onClick={handleSubscribe} disabled={loading || !billingReady}>
               {loading ? t('common.loading') : t('billing.subscribe')}
             </button>
+            <button type="button" className="btn btn-secondary" onClick={handleRestore} disabled={loading || !billingReady}>
+              {loading ? t('common.loading') : t('billing.restore')}
+            </button>
+            <p className="hint hint--compact">{t('billing.restoreHint')}</p>
             {!billingReady && (
               <p className="hint hint--compact">{t('billing.notConfigured')}</p>
             )}
