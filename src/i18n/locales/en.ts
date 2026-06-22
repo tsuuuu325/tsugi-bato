@@ -112,6 +112,17 @@ const en: MessageTree = {
     startBeat: 'Start a beat',
     completedBy: 'Made by {count} people',
     withContributors: '{names}',
+    withLabel: 'with ',
+    contributorSeparator: ' · ',
+  },
+  profile: {
+    title: '{name}',
+    desc: 'Activity on the timeline',
+    totalLikes: '{count} likes received',
+    songsTitle: 'Tracks joined',
+    empty: 'No tracks found',
+    notFound: 'Profile not found',
+    viewMyPage: 'Go to my page',
   },
   my: {
     title: 'My page',

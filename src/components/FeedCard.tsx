@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CommentThread } from '@/components/CommentThread';
+import { ContributorLinks } from '@/components/ContributorLinks';
 import { ReactionBar } from '@/components/ReactionBar';
 import { Transport } from '@/components/Transport';
 import { getPadById } from '@/data/loops';
@@ -10,8 +11,9 @@ import {
   getReferenceBpm,
   getSectionBpms,
   getContributorCount,
-  formatContributorNames,
+  getLayerContributorKey,
 } from '@/types';
+import { buildContributorPath } from '@/lib/contributorProfile';
 import { useI18n } from '@/i18n/LocaleProvider';
 
 interface FeedCardProps {
@@ -36,7 +38,6 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
     referenceBpm: song.referenceBpm,
   });
   const contributorCount = getContributorCount(song.layers);
-  const contributorNames = formatContributorNames(song.layers);
   const bpmDisplay = formatBpmSections(sectionBpms);
 
   return (
@@ -48,8 +49,16 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
             <p className="feed-card-meta">
               {bpmDisplay} · {duration}{t('common.seconds')} · {t('timeline.completedBy', { count: contributorCount })}
             </p>
-            {contributorNames && (
-              <p className="feed-card-credits">{t('timeline.withContributors', { names: contributorNames })}</p>
+            {contributorCount > 0 && (
+              <div className="feed-card-credits">
+                <span className="feed-card-credits-label">{t('timeline.withLabel')}</span>
+                <ContributorLinks
+                  layers={song.layers}
+                  className="feed-card-credits-links"
+                  separator={t('timeline.contributorSeparator')}
+                  inline
+                />
+              </div>
             )}
           </div>
         </div>
@@ -69,7 +78,12 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
               <span className="feed-contributor-pad" style={{ color: pad?.color }}>
                 {pad?.shortLabel ?? '?'}
               </span>
-              <span className="feed-contributor-name">{layer.contributorName}</span>
+              <Link
+                to={buildContributorPath(getLayerContributorKey(layer))}
+                className="contributor-link feed-contributor-name"
+              >
+                {layer.contributorName}
+              </Link>
             </div>
           );
         })}

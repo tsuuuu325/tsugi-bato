@@ -112,6 +112,17 @@ const ja: MessageTree = {
     startBeat: '曲を始める',
     completedBy: '{count}人で完成',
     withContributors: '{names}',
+    withLabel: '',
+    contributorSeparator: ' · ',
+  },
+  profile: {
+    title: '{name}さん',
+    desc: 'タイムラインでの活動',
+    totalLikes: 'もらったいいね {count}',
+    songsTitle: '関わった曲',
+    empty: '曲が見つかりません',
+    notFound: 'プロフィールが見つかりません',
+    viewMyPage: 'マイページへ',
   },
   my: {
     title: 'マイページ',

@@ -223,6 +223,50 @@ export async function fetchReactions(songId: string): Promise<FeedReaction[]> {
   );
 }
 
+function mergeReactions(rows: FeedReaction[]): FeedReaction[] {
+  const merged = new Map<string, FeedReaction>();
+  for (const reaction of rows) {
+    merged.set(`${reaction.songId}:${reaction.deviceId}`, reaction);
+  }
+  return [...merged.values()];
+}
+
+/** 複数曲のいいねをまとめて取得（重複排除済み） */
+export async function fetchReactionsForSongs(songIds: string[]): Promise<FeedReaction[]> {
+  const uniqueIds = [...new Set(songIds)];
+  if (uniqueIds.length === 0) return [];
+
+  const idSet = new Set(uniqueIds);
+  const allLocal = loadJson<FeedReaction[]>(LOCAL_REACTIONS_KEY, []);
+  const local = allLocal.filter((r) => idSet.has(r.songId));
+
+  const inList = uniqueIds.map((id) => `"${id}"`).join(',');
+  const remote = await supabaseGet<ReactionRow[]>(
+    `feed_reactions?select=*&song_id=in.(${inList})`,
+  );
+
+  if (!remote) {
+    return mergeReactions(local);
+  }
+
+  const mapped: FeedReaction[] = remote.map((row) => ({
+    id: row.id,
+    songId: row.song_id,
+    deviceId: row.device_id,
+    authorName: row.author_name,
+    authorAvatar: row.author_avatar,
+    createdAt: row.created_at,
+  }));
+
+  return mergeReactions([...mapped, ...local]);
+}
+
+/** 関わった曲にもらったいいねの合計 */
+export async function countLikesForSongs(songIds: string[]): Promise<number> {
+  const reactions = await fetchReactionsForSongs(songIds);
+  return reactions.length;
+}
+
 export async function toggleReaction(
   songId: string,
   deviceId: string,

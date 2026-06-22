@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { SongEditor } from '@/components/SongEditor';
+import { ContributorLinks } from '@/components/ContributorLinks';
 import { CommentThread } from '@/components/CommentThread';
 import { ShareButton } from '@/components/ShareButton';
 import { useSongStore } from '@/store/songStore';
@@ -11,7 +12,6 @@ import {
   getContributorCount,
   getSectionBpms,
   getEffectiveSectionCount,
-  formatContributorNames,
 } from '@/types';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { getMaxSections, canPublishToTimeline, canUserContributeToday } from '@/lib/plan';
@@ -71,7 +71,6 @@ export function SongPage() {
   const effectiveSections = getEffectiveSectionCount(song, song.layers, getMaxSections());
   const sectionBpms = getSectionBpms(song);
   const bpmDisplay = formatBpmSections(sectionBpms);
-  const contributorNames = formatContributorNames(song.layers);
   const canPublish = !isComplete && canPublishToTimeline(song.sectionCount);
 
   return (
@@ -99,8 +98,11 @@ export function SongPage() {
         })}
       </p>
 
-      {contributorNames && (
-        <p className="song-credits">{t('timeline.withContributors', { names: contributorNames })}</p>
+      {getContributorCount(song.layers) > 0 && (
+        <div className="song-credits">
+          <span className="song-credits-label">{t('timeline.withLabel')}</span>
+          <ContributorLinks layers={song.layers} className="song-credits-links" separator={t('timeline.contributorSeparator')} inline />
+        </div>
       )}
 
       {!isComplete && !canContinue && canUserAddLayer(song, song.layers, deviceId) && (

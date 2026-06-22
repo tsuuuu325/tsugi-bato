@@ -7,6 +7,7 @@ import { AddLayerPage } from '@/pages/AddLayerPage';
 import { SongPage } from '@/pages/SongPage';
 import { TimelinePage } from '@/pages/TimelinePage';
 import { MyPage } from '@/pages/MyPage';
+import { ContributorProfilePage } from '@/pages/ContributorProfilePage';
 import { ProPage } from '@/pages/ProPage';
 import { TermsPage } from '@/pages/legal/TermsPage';
 import { PrivacyPage } from '@/pages/legal/PrivacyPage';
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/song/:code" element={<SongPage />} />
         <Route path="/s/:code" element={<SongPage />} />
         <Route path="/me" element={<MyPage />} />
+        <Route path="/u/:contributorKey" element={<ContributorProfilePage />} />
         <Route path="/pro" element={<ProPage />} />
         <Route path="/legal/terms" element={<TermsPage />} />
         <Route path="/legal/privacy" element={<PrivacyPage />} />
