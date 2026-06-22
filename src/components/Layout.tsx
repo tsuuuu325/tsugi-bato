@@ -1,11 +1,23 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
+import { fetchSiteStats, showVisitorStats, trackPageView, type SiteStats } from '@/lib/analytics';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const { t } = useI18n();
+  const [stats, setStats] = useState<SiteStats | null>(null);
+
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!showVisitorStats()) return;
+    void fetchSiteStats().then(setStats);
+  }, [location.pathname]);
 
   return (
     <div className="app">
@@ -15,6 +27,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <span className="logo-text">{t('app.name')}</span>
         </Link>
         <nav className="header-nav">
+          <Link
+            to="/me"
+            className={`header-icon-btn ${location.pathname === '/me' ? 'header-icon-btn--active' : ''}`}
+            aria-label={t('nav.myPage')}
+            title={t('nav.myPage')}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="header-icon-btn-svg">
+              <circle cx="12" cy="8" r="4" fill="currentColor" />
+              <path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6" fill="currentColor" />
+            </svg>
+          </Link>
           <Link to="/timeline" className={`header-link ${location.pathname === '/timeline' ? 'header-link--active' : ''}`}>
             🌍 {t('nav.timeline')}
           </Link>
@@ -35,6 +58,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Link to="/legal/tokushoho">{t('legal.tokushoho')}</Link>
         </nav>
         <span>{t('app.footer')}</span>
+        {showVisitorStats() && stats && (
+          <span className="footer-stats">
+            {t('stats.footer', {
+              unique: stats.unique_visitors,
+              pageviews: stats.pageviews,
+              todayUnique: stats.today_unique,
+            })}
+          </span>
+        )}
       </footer>
     </div>
   );

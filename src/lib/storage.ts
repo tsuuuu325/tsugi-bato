@@ -1,6 +1,5 @@
-import type { Song, Layer, SongWithLayers, FeedSong, StepPattern } from '@/types';
+import type { Song, Layer, SongWithLayers, StepPattern } from '@/types';
 import {
-  DEFAULT_AVATAR,
   DEFAULT_BPM,
   normalizeSongWithLayers,
   getEffectiveSectionCount,
@@ -16,6 +15,40 @@ export { getUsername, setUsername };
 const SONGS_KEY = 'tsugi-bato-songs';
 const LAYERS_KEY = 'tsugi-bato-layers';
 const LOCAL_FEED_KEY = 'tsugi-bato-local-feed';
+const DATA_VERSION_KEY = 'tsugi-bato-data-version';
+/** Bump to force full local wipe (increment when test data must go). */
+const CURRENT_DATA_VERSION = '6';
+
+function clearLocalSongStorage(): void {
+  localStorage.removeItem(SONGS_KEY);
+  localStorage.removeItem(LAYERS_KEY);
+  localStorage.removeItem(LOCAL_FEED_KEY);
+  localStorage.removeItem('tsugi-bato-local-comments');
+  localStorage.removeItem('tsugi-bato-local-reactions');
+}
+
+/** 古いデモ曲（Drift Waiting 等）が残っていたら削除 */
+function purgeLegacyDemoSongs(): void {
+  const songs = loadJson<Song[]>(SONGS_KEY, []);
+  const stale = songs.some(
+    (s) =>
+      s.id === 'demo-001'
+      || s.shareCode === 'DEMO01'
+      || s.creatorName === 'Drift King'
+      || s.title.includes('Drift Waiting'),
+  );
+  if (!stale) return;
+  clearLocalSongStorage();
+}
+
+/** 開発中のテスト曲など、ローカル保存データを一度クリアする。true = Supabase も消す */
+export function migrateStorageVersion(): boolean {
+  purgeLegacyDemoSongs();
+  if (localStorage.getItem(DATA_VERSION_KEY) === CURRENT_DATA_VERSION) return false;
+  clearLocalSongStorage();
+  localStorage.setItem(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
+  return true;
+}
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -170,86 +203,7 @@ export function getCompletedSongs(): SongWithLayers[] {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-function seedGlobalFeedDemo(): void {
-  const feed = loadJson<FeedSong[]>(LOCAL_FEED_KEY, []);
-  if (feed.some((f) => f.id === 'feed-demo-global-1')) return;
-
-  const demos: FeedSong[] = [
-    {
-      id: 'feed-demo-global-1',
-      shareCode: 'PHONK1',
-      title: 'Midnight Cowbell',
-      bpm: 145,
-      mode: 'collab',
-      creatorName: 'TokyoDrift',
-      creatorAvatar: '🔥',
-      completedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      layers: [
-        { id: 'fl1', songId: 'feed-demo-global-1', loopId: 'pad-kick-4', contributorName: 'TokyoDrift', contributorAvatar: '🔥', contributorIndex: 0, sectionIndex: 0, addMode: 'extend', isVirtual: false, addedAt: '' },
-        { id: 'fl2', songId: 'feed-demo-global-1', loopId: 'pad-clap', contributorName: 'MemphisKid', contributorAvatar: '😎', contributorIndex: 1, sectionIndex: 0, addMode: 'layer', isVirtual: false, addedAt: '' },
-        { id: 'fl3', songId: 'feed-demo-global-1', loopId: 'pad-snare', contributorName: '808Queen', contributorAvatar: '🌙', contributorIndex: 2, sectionIndex: 1, addMode: 'extend', isVirtual: false, addedAt: '' },
-        { id: 'fl4', songId: 'feed-demo-global-1', loopId: 'pad-hat-cl', contributorName: 'DriftWolf', contributorAvatar: '🐺', contributorIndex: 3, sectionIndex: 1, addMode: 'layer', isVirtual: false, addedAt: '' },
-      ],
-    },
-    {
-      id: 'feed-demo-global-2',
-      shareCode: 'PHONK2',
-      title: 'Neon Sub Slide',
-      bpm: 140,
-      mode: 'collab',
-      creatorName: 'BerlinGhost',
-      creatorAvatar: '👻',
-      completedAt: new Date(Date.now() - 86400000).toISOString(),
-      layers: [
-        { id: 'fl5', songId: 'feed-demo-global-2', loopId: 'pad-sub', contributorName: 'BerlinGhost', contributorAvatar: '👻', contributorIndex: 0, sectionIndex: 0, addMode: 'extend', isVirtual: false, addedAt: '' },
-        { id: 'fl6', songId: 'feed-demo-global-2', loopId: 'pad-stab', contributorName: 'CowbellPro', contributorAvatar: '💀', contributorIndex: 1, sectionIndex: 0, addMode: 'layer', isVirtual: false, addedAt: '' },
-        { id: 'fl7', songId: 'feed-demo-global-2', loopId: 'pad-ride', contributorName: 'PhonkCat', contributorAvatar: '🦊', contributorIndex: 2, sectionIndex: 1, addMode: 'extend', isVirtual: false, addedAt: '' },
-      ],
-    },
-  ];
-
-  saveJson(LOCAL_FEED_KEY, [...demos, ...feed]);
-}
-
-/** Seed demo songs for first-time users */
+/** @deprecated デモ曲の自動投入は行わない */
 export function seedDemoData(): void {
-  seedGlobalFeedDemo();
-
-  if (getAllSongs().length > 0) return;
-
-  const now = new Date().toISOString();
-  const demoBpm = 140;
-  const demoSong: Song = {
-    id: 'demo-001',
-    shareCode: 'DEMO01',
-    title: 'Drift Waiting',
-    bpm: demoBpm,
-    referenceBpm: demoBpm,
-    maxBars: 8,
-    maxContributors: 6,
-    status: 'open',
-    mode: 'collab',
-    createdAt: now,
-    updatedAt: now,
-    creatorName: 'Drift King',
-    sectionCount: 1,
-    sectionBpms: [demoBpm],
-  };
-
-  const demoLayer: Layer = {
-    id: 'layer-demo-001',
-    songId: 'demo-001',
-    loopId: 'pad-kick-4',
-    contributorName: 'Drift King',
-    contributorAvatar: DEFAULT_AVATAR,
-    contributorIndex: 0,
-    sectionIndex: 0,
-    addMode: 'layer',
-    isVirtual: false,
-    addedAt: now,
-    pattern: resizeStepPattern(getDefaultPattern('pad-kick-4'), getSectionTotalSteps(demoBpm)),
-  };
-
-  saveSong(demoSong);
-  saveLayer(demoLayer);
+  /* intentionally empty */
 }

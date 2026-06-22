@@ -211,6 +211,26 @@ export function getContributorCount(layers: Layer[]): number {
   return getContributorIds(layers).length;
 }
 
+export interface ContributorSummary {
+  id: string;
+  name: string;
+}
+
+export function getContributorSummaries(layers: Layer[]): ContributorSummary[] {
+  return getContributorIds(layers).map((id) => {
+    const layer = layers.find((l) => !l.isVirtual && getLayerContributorKey(l) === id);
+    return { id, name: layer?.contributorName ?? '?' };
+  });
+}
+
+export function formatContributorNames(layers: Layer[], separator = ' · '): string {
+  return getContributorSummaries(layers).map((c) => c.name).join(separator);
+}
+
+export function userContributedToSong(layers: Layer[], deviceId: string): boolean {
+  return layers.some((l) => !l.isVirtual && l.contributorId === deviceId);
+}
+
 export function getUserLayers(layers: Layer[], deviceId: string): Layer[] {
   return layers.filter((l) => !l.isVirtual && l.contributorId === deviceId);
 }

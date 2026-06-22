@@ -29,6 +29,7 @@ alter table feed_comments enable row level security;
 
 create policy "feed_songs read" on feed_songs for select using (true);
 create policy "feed_songs insert" on feed_songs for insert with check (true);
+create policy "feed_songs delete" on feed_songs for delete using (true);
 create policy "feed_comments read" on feed_comments for select using (true);
 create policy "feed_comments insert" on feed_comments for insert with check (true);
 
@@ -78,3 +79,42 @@ alter table subscriptions add column if not exists customer_name text;
 create policy "subscriptions read own" on subscriptions for select using (true);
 create policy "subscriptions service write" on subscriptions for insert with check (true);
 create policy "subscriptions service update" on subscriptions for update using (true);
+
+-- アクセス解析（匿名の端末ID + 閲覧パス）
+create table if not exists site_visits (
+  id uuid primary key default gen_random_uuid(),
+  visitor_id text not null,
+  path text not null default '/',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists site_visits_created_at on site_visits(created_at desc);
+create index if not exists site_visits_visitor_id on site_visits(visitor_id);
+
+alter table site_visits enable row level security;
+
+create policy "site_visits insert" on site_visits for insert with check (true);
+
+create or replace function get_site_stats()
+returns json
+language sql
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'unique_visitors', (select count(distinct visitor_id) from site_visits),
+    'pageviews', (select count(*) from site_visits),
+    'today_unique', (
+      select count(distinct visitor_id)
+      from site_visits
+      where created_at >= (current_date at time zone 'Asia/Tokyo')
+    ),
+    'today_pageviews', (
+      select count(*)
+      from site_visits
+      where created_at >= (current_date at time zone 'Asia/Tokyo')
+    )
+  );
+$$;
+
+grant execute on function get_site_stats() to anon, authenticated;

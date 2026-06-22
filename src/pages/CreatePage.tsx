@@ -9,7 +9,6 @@ import {
   remainingCreatedSongs,
   remainingDailyLayerSessions,
   remainingDailyExtendSessions,
-  FREE_MAX_SECTIONS,
   FREE_MAX_CREATED_SONGS,
   FREE_DAILY_LAYER_SESSIONS,
   FREE_DAILY_EXTEND_SESSIONS,
@@ -28,7 +27,6 @@ export function CreatePage() {
   useEffect(() => { init(); }, []);
 
   const isSolo = searchParams.get('solo') === '1';
-  const isVirtual = searchParams.get('virtual') === '1';
   const [title, setTitle] = useState('');
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [message, setMessage] = useState('');
@@ -49,16 +47,13 @@ export function CreatePage() {
       setMessage(`⚠️ ${translateError('dailyLayerSessionLimit')}`);
       return;
     }
-    let mode: 'solo' | 'collab' | 'virtual' = 'collab';
-    if (isSolo) mode = 'solo';
-    else if (isVirtual) mode = 'virtual';
+    const mode = isSolo ? 'solo' : 'collab';
 
     const result = createSong({
       title: title || t('app.defaultBeatTitle'),
       bpm,
       foundationLoopId: selectedPad,
       mode,
-      addVirtualPart: isVirtual,
     });
     if (!result.ok) {
       setMessage(`⚠️ ${translateError(result.reason)}`);
@@ -67,9 +62,7 @@ export function CreatePage() {
     navigate(`/song/${result.song.shareCode}?continue=1`);
   };
 
-  const pageTitle = isSolo ? t('create.soloTitle')
-    : isVirtual ? t('create.virtualTitle')
-    : t('create.defaultTitle');
+  const pageTitle = isSolo ? t('create.soloTitle') : t('create.defaultTitle');
 
   return (
     <div className="page create-page">
@@ -81,7 +74,6 @@ export function CreatePage() {
           {t('plan.quota', {
             remaining,
             max: FREE_MAX_CREATED_SONGS,
-            sectionMax: FREE_MAX_SECTIONS,
             dailyLayerRemaining,
             dailyLayerMax: FREE_DAILY_LAYER_SESSIONS,
             dailyExtendRemaining,
@@ -100,6 +92,7 @@ export function CreatePage() {
         <label className="label" htmlFor="title">{t('create.songTitle')}</label>
         <input id="title" type="text" className="input" placeholder={t('app.defaultBeatTitle')} value={title}
           onChange={(e) => setTitle(e.target.value)} maxLength={40} />
+        <p className="hint hint--compact">{t('create.songTitleHint')}</p>
         <label className="label" htmlFor="bpm">{t('create.bpmLabel', { min: MIN_BPM, max: MAX_BPM })}</label>
         <div className="bpm-control">
           <input id="bpm" type="range" min={MIN_BPM} max={MAX_BPM} value={bpm}

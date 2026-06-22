@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Avatar } from '@/components/Avatar';
 import { CommentThread } from '@/components/CommentThread';
 import { ReactionBar } from '@/components/ReactionBar';
 import { Transport } from '@/components/Transport';
@@ -11,6 +10,7 @@ import {
   getReferenceBpm,
   getSectionBpms,
   getContributorCount,
+  formatContributorNames,
 } from '@/types';
 import { useI18n } from '@/i18n/LocaleProvider';
 
@@ -26,7 +26,8 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
   const { t, formatPart, formatSection, formatBpmSections } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
-  const sectionCount = Math.max(1, ...song.layers.map((l) => (l.sectionIndex ?? 0) + 1));
+  const realLayers = song.layers.filter((l) => !l.isVirtual);
+  const sectionCount = Math.max(1, ...realLayers.map((l) => (l.sectionIndex ?? 0) + 1));
   const sectionBpms = song.sectionBpms ?? getSectionBpms({ bpm: song.bpm, sectionCount });
   const duration = getSongDurationFromSong({
     bpm: song.bpm,
@@ -35,18 +36,21 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
     referenceBpm: song.referenceBpm,
   });
   const contributorCount = getContributorCount(song.layers);
+  const contributorNames = formatContributorNames(song.layers);
   const bpmDisplay = formatBpmSections(sectionBpms);
 
   return (
     <article className="feed-card">
       <header className="feed-card-header">
         <div className="feed-card-title-row">
-          <Avatar emoji={song.creatorAvatar} size="lg" label={song.creatorName} />
           <div>
             <h2 className="feed-card-title">{song.title}</h2>
             <p className="feed-card-meta">
-              {bpmDisplay} · {duration}{t('common.seconds')} · {t('timeline.completedBy', { count: contributorCount })} · {song.creatorName}
+              {bpmDisplay} · {duration}{t('common.seconds')} · {t('timeline.completedBy', { count: contributorCount })}
             </p>
+            {contributorNames && (
+              <p className="feed-card-credits">{t('timeline.withContributors', { names: contributorNames })}</p>
+            )}
           </div>
         </div>
         <time className="feed-card-time">
@@ -55,11 +59,10 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
       </header>
 
       <div className="feed-contributors">
-        {song.layers.map((layer, i) => {
+        {realLayers.map((layer, i) => {
           const pad = getPadById(layer.loopId);
           return (
             <div key={layer.id} className="feed-contributor">
-              <Avatar emoji={layer.contributorAvatar ?? '🎧'} size="sm" label={layer.contributorName} />
               <span className="feed-contributor-part">
                 {formatPart(i + 1)} · {formatSection(layer.sectionIndex ?? 0)}
               </span>
@@ -73,7 +76,7 @@ export function FeedCard({ song, username, avatarEmoji, deviceId, dateLocale = '
       </div>
 
       <Transport
-        layers={song.layers}
+        layers={realLayers}
         referenceBpm={getReferenceBpm(song)}
         sectionCount={sectionCount}
         sectionBpms={sectionBpms}

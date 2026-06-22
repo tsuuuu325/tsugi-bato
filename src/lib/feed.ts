@@ -270,3 +270,13 @@ export async function toggleReaction(
 export function isFeedGlobal(): boolean {
   return isSupabaseConfigured();
 }
+
+/** Supabase タイムラインの曲をすべて削除（コメント・いいねは FK で連鎖削除） */
+export async function clearRemoteFeed(): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const rows = await supabaseGet<{ id: string }[]>('feed_songs?select=id');
+  if (!rows?.length) return;
+  await Promise.all(
+    rows.map((row) => supabaseDelete(`feed_songs?id=eq.${encodeURIComponent(row.id)}`)),
+  );
+}

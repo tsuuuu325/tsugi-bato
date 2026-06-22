@@ -66,3 +66,18 @@ export async function supabaseDelete(path: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function supabaseRpc<T>(fn: string, body: Record<string, unknown> = {}): Promise<T | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const res = await fetch(`${baseUrl()}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}

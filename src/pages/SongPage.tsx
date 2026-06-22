@@ -11,6 +11,7 @@ import {
   getContributorCount,
   getSectionBpms,
   getEffectiveSectionCount,
+  formatContributorNames,
 } from '@/types';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { getMaxSections, canPublishToTimeline, canUserContributeToday } from '@/lib/plan';
@@ -26,13 +27,23 @@ export function SongPage() {
   const username = useSongStore((s) => s.username);
   const avatarEmoji = useSongStore((s) => s.avatarEmoji);
   const [song, setSong] = useState(() => (code ? loadSongByCode(code) : null));
+  const [publishTitle, setPublishTitle] = useState('');
   const [publishMessage, setPublishMessage] = useState('');
   const focusContinue = searchParams.get('continue') === '1';
+
+  useEffect(() => {
+    init();
+    if (code) setSong(loadSongByCode(code));
+  }, [code, init, loadSongByCode]);
+
+  useEffect(() => {
+    if (song) setPublishTitle(song.title);
+  }, [song?.id, song?.title]);
 
   const handlePublish = () => {
     if (!song) return;
     setPublishMessage('');
-    const result = completeSong(song.id);
+    const result = completeSong(song.id, publishTitle);
     if (!result.ok) {
       setPublishMessage(`⚠️ ${translateError(result.reason)}`);
       return;
@@ -40,11 +51,6 @@ export function SongPage() {
     setSong(result.song);
     setPublishMessage(t('song.publishedSuccess'));
   };
-
-  useEffect(() => {
-    init();
-    if (code) setSong(loadSongByCode(code));
-  }, [code, init, loadSongByCode]);
 
   if (!song) {
     return (
@@ -65,6 +71,8 @@ export function SongPage() {
   const effectiveSections = getEffectiveSectionCount(song, song.layers, getMaxSections());
   const sectionBpms = getSectionBpms(song);
   const bpmDisplay = formatBpmSections(sectionBpms);
+  const contributorNames = formatContributorNames(song.layers);
+  const canPublish = !isComplete && canPublishToTimeline(song.sectionCount);
 
   return (
     <div className="page song-page">
@@ -84,21 +92,25 @@ export function SongPage() {
         {t('song.meta', {
           bpm: bpmDisplay,
           duration: effectiveSections * 10,
-          layers: song.layers.length,
+          layers: song.layers.filter((l) => !l.isVirtual).length,
           contributors: getContributorCount(song.layers),
           max: song.maxContributors,
           creator: song.creatorName,
         })}
       </p>
 
+      {contributorNames && (
+        <p className="song-credits">{t('timeline.withContributors', { names: contributorNames })}</p>
+      )}
+
       {!isComplete && !canContinue && canUserAddLayer(song, song.layers, deviceId) && (
         <p className="hint hint--compact">{t('plan.dailyBothExhausted')}</p>
       )}
 
-      {!isComplete && !canPublishToTimeline(song.sectionCount) && (
+      {!isComplete && !canPublish && (
         <p className="hint hint--compact">{t('plan.timelineNeedSections')}</p>
       )}
-      {!isComplete && canPublishToTimeline(song.sectionCount) && (
+      {canPublish && (
         <p className="hint hint--compact">{t('plan.timelineCanPublish')}</p>
       )}
 
@@ -108,10 +120,23 @@ export function SongPage() {
         </div>
       )}
 
-      {!isComplete && canPublishToTimeline(song.sectionCount) && (
-        <button type="button" className="btn btn-primary btn-large" onClick={handlePublish}>
-          {t('song.completeToFeed')}
-        </button>
+      {canPublish && (
+        <section className="card publish-card">
+          <label className="label" htmlFor="publish-title">{t('song.publishTitleLabel')}</label>
+          <input
+            id="publish-title"
+            type="text"
+            className="input"
+            value={publishTitle}
+            onChange={(e) => setPublishTitle(e.target.value)}
+            maxLength={40}
+            placeholder={t('app.defaultBeatTitle')}
+          />
+          <p className="hint hint--compact">{t('song.publishTitleHint')}</p>
+          <button type="button" className="btn btn-primary btn-large" onClick={handlePublish}>
+            {t('song.completeToFeed')}
+          </button>
+        </section>
       )}
 
       <SongEditor

@@ -1,17 +1,7 @@
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
 
 import {
-
   getAllLayers,
-
-  getAllSongs,
-
-  replaceAllLayers,
-
-  replaceAllSongs,
-
-  getLayersForSong,
-
 } from '@/lib/storage';
 
 import type { UserPlan, Song, Layer, LayerAddMode } from '@/types';
@@ -230,20 +220,14 @@ export function remainingCreatedSongs(deviceId: string): number | null {
 
 
 
-/** ローカル日付 YYYY-MM-DD */
-
+/** 日本時間（JST）の日付 YYYY-MM-DD — 日次リセットは JST 0:00 */
 export function getTodayDateKey(): string {
-
-  const d = new Date();
-
-  const y = d.getFullYear();
-
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-
-  const day = String(d.getDate()).padStart(2, '0');
-
-  return `${y}-${m}-${day}`;
-
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 
@@ -401,71 +385,4 @@ export function canUserContributeToday(
   return canStartDailyLayerSession() || canStartDailyExtendSession();
 
 }
-
-
-
-/** 無料プランの利用枠をリセット（開発・テスト用） */
-
-export function resetFreePlanLimitsForTesting(deviceId: string): void {
-
-  if (!deviceId) return;
-
-
-
-  const today = getTodayDateKey();
-
-  const profile = getUserProfile();
-
-  const zero: DailyCounter = { date: today, count: 0 };
-
-  saveUserProfile({
-
-    ...profile,
-
-    plan: 'free',
-
-    dailyContributions: zero,
-
-    dailyLayerSessions: zero,
-
-    dailyExtendSessions: zero,
-
-  });
-
-
-
-  const remainingLayers = getAllLayers().filter(
-
-    (l) => l.contributorId !== deviceId || l.isVirtual,
-
-  );
-
-  replaceAllLayers(remainingLayers);
-
-
-
-  const songIdsWithLayers = new Set(remainingLayers.map((l) => l.songId));
-
-  const songs = getAllSongs()
-
-    .filter((s) => songIdsWithLayers.has(s.id))
-
-    .map((s) => {
-
-      if (s.activeContributorId !== deviceId) return s;
-
-      const hasUserLayer = getLayersForSong(s.id).some(
-
-        (l) => !l.isVirtual && l.contributorId === deviceId,
-
-      );
-
-      return hasUserLayer ? s : { ...s, activeContributorId: undefined };
-
-    });
-
-  replaceAllSongs(songs);
-
-}
-
 

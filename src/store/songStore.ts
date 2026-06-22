@@ -31,6 +31,7 @@ import {
   deleteLayer,
   seedDemoData,
   migrateLegacyData,
+  migrateStorageVersion,
 } from '@/lib/storage';
 import {
   getUserProfile,
@@ -100,7 +101,10 @@ interface SongStore {
     layerId: string,
   ) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
 
-  completeSong: (songId: string) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
+  completeSong: (
+    songId: string,
+    title?: string,
+  ) => { ok: true; song: SongWithLayers } | { ok: false; reason: string };
   setPlaying: (playing: boolean) => void;
 }
 
@@ -177,8 +181,12 @@ export const useSongStore = create<SongStore>((set, get) => ({
   isPlaying: false,
 
   init: () => {
+    const wipeRemote = migrateStorageVersion();
     seedDemoData();
     migrateLegacyData();
+    if (wipeRemote) {
+      void import('@/lib/feed').then(({ clearRemoteFeed }) => clearRemoteFeed());
+    }
     const profile = getUserProfile();
     ensureDeviceId();
     set({
@@ -586,11 +594,16 @@ export const useSongStore = create<SongStore>((set, get) => ({
     return updated ?? null;
   },
 
-  completeSong: (songId: string) => {
-    const song = getSongWithLayers(songId);
+  completeSong: (songId: string, title?: string) => {
+    let song = getSongWithLayers(songId);
     if (!song) return { ok: false as const, reason: 'songNotFound' };
     if (song.sectionCount < MIN_TIMELINE_SECTIONS) {
       return { ok: false as const, reason: 'timelineNeedsSections' };
+    }
+    if (title?.trim()) {
+      const trimmed = title.trim().slice(0, 40);
+      saveSong({ ...song, title: trimmed, updatedAt: new Date().toISOString() });
+      song = getSongWithLayers(songId)!;
     }
     if (song.status === 'complete') {
       return { ok: true as const, song };

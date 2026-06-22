@@ -11,7 +11,7 @@ import {
   syncProPlanFromServer,
   type SubscriptionInfo,
 } from '@/lib/billing';
-import { isProPlan, setUserPlan } from '@/lib/plan';
+import { isProPlan } from '@/lib/plan';
 import { getUserProfile, setBillingContact } from '@/lib/profile';
 
 export function ProPage() {
@@ -57,8 +57,7 @@ export function ProPage() {
   const handleSubscribe = async () => {
     if (!deviceId) return;
     if (!billingReady) {
-      setUserPlan('pro');
-      setMessage(t('billing.testActivated'));
+      setMessage(t('billing.notConfigured'));
       return;
     }
     const email = billingEmail.trim();
@@ -81,11 +80,6 @@ export function ProPage() {
     setLoading(false);
     if (url) {
       window.location.href = url;
-      return;
-    }
-    if (error === 'billing_disabled') {
-      setUserPlan('pro');
-      setMessage(t('billing.testActivated'));
       return;
     }
     setMessage(t('billing.errorDetail', { detail: error ?? 'unknown' }));
@@ -136,13 +130,9 @@ export function ProPage() {
                   : t('billing.renewsOn', { date: periodEnd })}
               </p>
             )}
-            {billingReady ? (
+            {billingReady && (
               <button type="button" className="btn btn-secondary" onClick={handleManage} disabled={loading}>
                 {loading ? t('common.loading') : t('billing.manage')}
-              </button>
-            ) : (
-              <button type="button" className="btn btn-secondary" onClick={() => { setUserPlan('free'); setMessage(t('billing.testDeactivated')); }}>
-                {t('plan.freeLabel')}
               </button>
             )}
           </>
@@ -176,7 +166,7 @@ export function ProPage() {
                 <p className="hint hint--compact">{t('billing.contactHint')}</p>
               </div>
             )}
-            <button type="button" className="btn btn-primary btn-large" onClick={handleSubscribe} disabled={loading}>
+            <button type="button" className="btn btn-primary btn-large" onClick={handleSubscribe} disabled={loading || !billingReady}>
               {loading ? t('common.loading') : t('billing.subscribe')}
             </button>
             {!billingReady && (
