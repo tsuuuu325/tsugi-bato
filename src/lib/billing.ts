@@ -61,12 +61,14 @@ async function invokeFunction<T>(name: string, body: unknown): Promise<{ data: T
 export async function fetchSubscription(
   deviceId: string,
   email?: string,
-): Promise<SubscriptionInfo | null> {
-  const body: { deviceId: string; email?: string } = { deviceId };
-  const normalized = email?.trim();
+): Promise<{ info: SubscriptionInfo | null; error: string | null }> {
+  const profile = getUserProfile();
+  const body: { deviceId: string; email?: string; authUserId?: string } = { deviceId };
+  const normalized = email?.trim() || profile.billingEmail?.trim();
   if (normalized) body.email = normalized;
-  const { data } = await invokeFunction<SubscriptionInfo>('get-subscription', body);
-  return data;
+  if (profile.authUserId) body.authUserId = profile.authUserId;
+  const { data, error } = await invokeFunction<SubscriptionInfo>('get-subscription', body);
+  return { info: data, error };
 }
 
 export interface CheckoutContact {
@@ -93,11 +95,17 @@ export async function createCheckoutSession(
   return { url: data?.url ?? null, error: data?.url ? null : 'no_checkout_url' };
 }
 
-export async function createPortalSession(deviceId: string): Promise<{ url: string | null; error: string | null }> {
+export async function createPortalSession(
+  deviceId: string,
+  email?: string,
+): Promise<{ url: string | null; error: string | null }> {
   const origin = window.location.origin;
+  const profile = getUserProfile();
+  const contactEmail = email?.trim() || profile.billingEmail?.trim();
   const { data, error } = await invokeFunction<{ url?: string; error?: string }>('create-portal-session', {
     deviceId,
     returnUrl: `${origin}/pro`,
+    email: contactEmail,
   });
   if (error) return { url: null, error };
   if (data?.error) return { url: null, error: data.error };
@@ -106,7 +114,7 @@ export async function createPortalSession(deviceId: string): Promise<{ url: stri
 
 function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   if (!info) return false;
-  return info.status === 'active' || info.status === 'trialing';
+  return info.status === 'active' || info.status === 'trialing' || info.status === 'past_due';
 }
 
 /** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
@@ -118,7 +126,11 @@ export async function syncProPlanFromServer(deviceId: string, email?: string): P
     return profile.plan ?? 'free';
   }
 
-  const sub = await fetchSubscription(deviceId, contactEmail);
+  const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
+  if (error) {
+    return profile.plan ?? 'free';
+  }
+
   const serverPlan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
 
   if (serverPlan === 'pro') {
@@ -128,8 +140,7 @@ export async function syncProPlanFromServer(deviceId: string, email?: string): P
     return 'pro';
   }
 
-  // メールまたは Stripe 照会済みのときだけ free に落とす（別端末の未照会 state で Pro を消さない）
-  if (contactEmail || sub) {
+  if (contactEmail && sub) {
     if (profile.plan !== serverPlan) {
       saveUserProfile({ ...getUserProfile(), plan: serverPlan });
     }

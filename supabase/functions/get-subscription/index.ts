@@ -16,6 +16,7 @@ const supabase = createClient(
 );
 
 type SubscriptionRow = {
+  device_id?: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   customer_email: string | null;
@@ -24,6 +25,10 @@ type SubscriptionRow = {
   current_period_end: string | null;
   cancel_at_period_end: boolean | null;
 };
+
+function isActiveStatus(status: string | null | undefined): boolean {
+  return status === 'active' || status === 'trialing' || status === 'past_due';
+}
 
 function toResponse(row: Pick<SubscriptionRow, 'status' | 'current_period_end' | 'cancel_at_period_end'>) {
   return {
@@ -37,16 +42,32 @@ async function upsertFromStripeSub(
   sub: Stripe.Subscription,
   deviceId: string,
   row?: SubscriptionRow | null,
+  customer?: Stripe.Customer | null,
 ) {
+  const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
   await supabase.from('subscriptions').upsert({
     device_id: deviceId,
-    stripe_customer_id: typeof sub.customer === 'string' ? sub.customer : sub.customer.id,
+    stripe_customer_id: customerId,
     stripe_subscription_id: sub.id,
     status: sub.status,
     cancel_at_period_end: sub.cancel_at_period_end,
     current_period_end: subscriptionPeriodEndIso(sub),
-    customer_email: row?.customer_email ?? undefined,
-    customer_name: row?.customer_name ?? undefined,
+    customer_email: row?.customer_email ?? customer?.email ?? undefined,
+    customer_name: row?.customer_name ?? (typeof customer?.name === 'string' ? customer.name : undefined),
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function copyRowToDevice(row: SubscriptionRow, deviceId: string) {
+  await supabase.from('subscriptions').upsert({
+    device_id: deviceId,
+    stripe_customer_id: row.stripe_customer_id,
+    stripe_subscription_id: row.stripe_subscription_id,
+    customer_email: row.customer_email,
+    customer_name: row.customer_name,
+    status: row.status,
+    current_period_end: row.current_period_end,
+    cancel_at_period_end: row.cancel_at_period_end,
     updated_at: new Date().toISOString(),
   });
 }
@@ -55,24 +76,68 @@ async function listActiveSubscription(customerId: string): Promise<Stripe.Subscr
   const list = await stripe.subscriptions.list({
     customer: customerId,
     status: 'all',
-    limit: 5,
+    limit: 10,
   });
-  return list.data.find((s) => s.status === 'active' || s.status === 'trialing') ?? list.data[0] ?? null;
+  return list.data.find((s) => isActiveStatus(s.status)) ?? null;
 }
 
 async function findCustomerByDeviceId(deviceId: string): Promise<Stripe.Customer | null> {
-  const search = await stripe.customers.search({
-    query: `metadata['device_id']:'${deviceId}'`,
-    limit: 1,
-  });
-  const hit = search.data[0];
-  return hit && !hit.deleted ? hit : null;
+  try {
+    const search = await stripe.customers.search({
+      query: `metadata['device_id']:'${deviceId}'`,
+      limit: 1,
+    });
+    const hit = search.data[0];
+    return hit && !hit.deleted ? hit : null;
+  } catch {
+    return null;
+  }
 }
 
 async function findCustomerByEmail(email: string): Promise<Stripe.Customer | null> {
-  const list = await stripe.customers.list({ email, limit: 5 });
-  const hit = list.data.find((c) => !c.deleted && c.email?.toLowerCase() === email.toLowerCase());
-  return hit ?? null;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  try {
+    const escaped = normalized.replace(/'/g, "\\'");
+    const search = await stripe.customers.search({
+      query: `email:'${escaped}'`,
+      limit: 5,
+    });
+    const hit = search.data.find((c) => !c.deleted && c.email?.toLowerCase() === normalized);
+    if (hit) return hit;
+  } catch {
+    /* fallback to list */
+  }
+
+  const list = await stripe.customers.list({ email: normalized, limit: 10 });
+  return list.data.find((c) => !c.deleted && c.email?.toLowerCase() === normalized) ?? null;
+}
+
+async function findSubscriptionRowByEmail(email: string): Promise<SubscriptionRow | null> {
+  const normalized = email.trim();
+  if (!normalized) return null;
+
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('device_id, stripe_customer_id, stripe_subscription_id, customer_email, customer_name, status, current_period_end, cancel_at_period_end')
+    .ilike('customer_email', normalized)
+    .order('updated_at', { ascending: false })
+    .limit(10);
+
+  if (!data?.length) return null;
+  return data.find((row) => isActiveStatus(row.status)) ?? data[0];
+}
+
+async function findBillingEmailFromAuthUser(authUserId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('device_backups')
+    .select('profile')
+    .eq('user_id', authUserId)
+    .maybeSingle();
+  const profile = data?.profile as { billingEmail?: string } | undefined;
+  const email = profile?.billingEmail?.trim();
+  return email || null;
 }
 
 async function fetchStripeSubscription(
@@ -85,7 +150,7 @@ async function fetchStripeSubscription(
   if (row?.stripe_subscription_id) {
     try {
       const sub = await stripe.subscriptions.retrieve(row.stripe_subscription_id);
-      if (sub.status !== 'canceled') {
+      if (isActiveStatus(sub.status)) {
         const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
         const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
         return { sub, customer: customer.deleted ? null : customer };
@@ -125,31 +190,39 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 
   try {
-    const { deviceId, email } = await req.json();
+    const { deviceId, email, authUserId } = await req.json();
     if (!deviceId || typeof deviceId !== 'string') {
       return jsonResponse({ error: 'deviceId required' }, 400);
     }
-    const normalizedEmail = typeof email === 'string' ? email.trim() : '';
 
-    const { data, error } = await supabase
+    let normalizedEmail = typeof email === 'string' ? email.trim() : '';
+    if (!normalizedEmail && typeof authUserId === 'string' && authUserId) {
+      normalizedEmail = (await findBillingEmailFromAuthUser(authUserId)) ?? '';
+    }
+
+    const { data: deviceRow, error } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id, stripe_subscription_id, customer_email, customer_name, status, current_period_end, cancel_at_period_end')
+      .select('device_id, stripe_customer_id, stripe_subscription_id, customer_email, customer_name, status, current_period_end, cancel_at_period_end')
       .eq('device_id', deviceId)
       .maybeSingle();
 
     if (error) return jsonResponse({ error: error.message }, 500);
 
+    let hintRow: SubscriptionRow | null = deviceRow;
+    if (normalizedEmail && (!hintRow || !isActiveStatus(hintRow.status))) {
+      const byEmail = await findSubscriptionRowByEmail(normalizedEmail);
+      if (byEmail) hintRow = byEmail;
+    }
+
+    const lookupEmail = normalizedEmail || hintRow?.customer_email || undefined;
     const { sub: stripeSub, customer } = await fetchStripeSubscription(
-      data,
+      hintRow,
       deviceId,
-      normalizedEmail || data?.customer_email || undefined,
+      lookupEmail,
     );
+
     if (stripeSub) {
-      const contact = {
-        customer_email: data?.customer_email ?? customer?.email ?? (normalizedEmail || undefined),
-        customer_name: data?.customer_name ?? customer?.name ?? undefined,
-      };
-      await upsertFromStripeSub(stripeSub, deviceId, { ...data, ...contact });
+      await upsertFromStripeSub(stripeSub, deviceId, hintRow, customer);
       return jsonResponse({
         status: stripeSub.status,
         currentPeriodEnd: subscriptionPeriodEndIso(stripeSub),
@@ -157,7 +230,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!data) {
+    if (hintRow && isActiveStatus(hintRow.status)) {
+      await copyRowToDevice(hintRow, deviceId);
+      return jsonResponse(toResponse(hintRow));
+    }
+
+    if (!deviceRow) {
       return jsonResponse({
         status: 'inactive',
         currentPeriodEnd: null,
@@ -165,7 +243,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return jsonResponse(toResponse(data));
+    return jsonResponse(toResponse(deviceRow));
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }
