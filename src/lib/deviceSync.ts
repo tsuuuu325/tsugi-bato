@@ -1,6 +1,7 @@
 import type { Song, Layer, UserProfile } from '@/types';
 import { generateShareCode } from '@/types';
 import { getUserProfile, saveUserProfile, ensureDeviceId } from '@/lib/profile';
+import { getTodayDateKey } from '@/lib/plan';
 import {
   getAllSongs,
   getAllLayers,
@@ -45,18 +46,36 @@ function snapshotLocalBackup(deviceId: string): DeviceBackupRow {
   };
 }
 
+function mergeDailyCounter(
+  a?: { date: string; count: number },
+  b?: { date: string; count: number },
+): { date: string; count: number } | undefined {
+  const today = getTodayDateKey();
+  const aCount = a?.date === today ? a.count : 0;
+  const bCount = b?.date === today ? b.count : 0;
+  if (aCount === 0 && bCount === 0) {
+    if (a?.date === today) return a;
+    if (b?.date === today) return b;
+    return a ?? b;
+  }
+  return { date: today, count: Math.max(aCount, bCount) };
+}
+
 function mergeProfiles(base: UserProfile, extra: Partial<UserProfile>, userId: string, email?: string): UserProfile {
   const merged: UserProfile = {
     ...base,
     ...extra,
     deviceId: base.deviceId || extra.deviceId || ensureDeviceId(),
     authUserId: userId,
+    plan: (base.plan === 'pro' || extra.plan === 'pro') ? 'pro' : (extra.plan ?? base.plan ?? 'free'),
+    dailyLayerSessions: mergeDailyCounter(base.dailyLayerSessions, extra.dailyLayerSessions),
+    dailyExtendSessions: mergeDailyCounter(base.dailyExtendSessions, extra.dailyExtendSessions),
+    billingEmail: base.billingEmail || extra.billingEmail || email,
+    billingName: base.billingName || extra.billingName,
   };
   if (!merged.username?.trim() && extra.username?.trim()) {
     merged.username = extra.username.trim();
   }
-  if (extra.plan === 'pro') merged.plan = 'pro';
-  if (email && !merged.billingEmail) merged.billingEmail = email;
   return merged;
 }
 
@@ -96,6 +115,9 @@ export function mergeDeviceBackups(
     profile = mergeProfiles(profile, row.profile ?? {}, userId, email);
   }
   profile = mergeProfiles(profile, {}, userId, email);
+  if (rows.some((row) => row.profile?.plan === 'pro')) {
+    profile.plan = 'pro';
+  }
   profile.deviceId = deviceId;
   profile.syncCode = syncCode;
   profile.authUserId = userId;
@@ -219,6 +241,11 @@ export async function linkAuthUser(userId: string, email?: string): Promise<void
 
   applyBackupLocally(merged);
   await pushDeviceBackup(userId);
+
+  const { syncProPlanFromServer } = await import('@/lib/billing');
+  await syncProPlanFromServer(deviceId, email ?? merged.profile.billingEmail);
+  await pushDeviceBackup(userId);
+
   pullComplete = true;
 }
 
@@ -245,6 +272,8 @@ export async function pullDeviceBackup(search = window.location.search): Promise
       );
       if (byUser || byDevice || local.songs.length > 0) {
         applyBackupLocally(merged);
+        const { syncProPlanFromServer } = await import('@/lib/billing');
+        await syncProPlanFromServer(deviceId, profile.billingEmail);
         await pushDeviceBackup(profile.authUserId);
         return true;
       }

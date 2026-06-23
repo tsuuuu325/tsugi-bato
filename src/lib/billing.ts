@@ -109,15 +109,32 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   return info.status === 'active' || info.status === 'trialing';
 }
 
+/** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
 export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
-  if (!billingEnabled() || !deviceId) {
-    return getUserProfile().plan ?? 'free';
-  }
-  const sub = await fetchSubscription(deviceId, email);
-  const plan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
   const profile = getUserProfile();
-  if (profile.plan !== plan) {
-    saveUserProfile({ ...profile, plan });
+  const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
+
+  if (!billingEnabled() || !deviceId) {
+    return profile.plan ?? 'free';
   }
-  return plan;
+
+  const sub = await fetchSubscription(deviceId, contactEmail);
+  const serverPlan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
+
+  if (serverPlan === 'pro') {
+    if (profile.plan !== 'pro') {
+      saveUserProfile({ ...getUserProfile(), plan: 'pro' });
+    }
+    return 'pro';
+  }
+
+  // メールまたは Stripe 照会済みのときだけ free に落とす（別端末の未照会 state で Pro を消さない）
+  if (contactEmail || sub) {
+    if (profile.plan !== serverPlan) {
+      saveUserProfile({ ...getUserProfile(), plan: serverPlan });
+    }
+    return serverPlan;
+  }
+
+  return profile.plan ?? 'free';
 }

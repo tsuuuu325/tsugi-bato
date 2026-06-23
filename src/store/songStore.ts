@@ -238,8 +238,13 @@ export const useSongStore = create<SongStore>((set, get) => ({
         void pushDeviceBackup();
       }
       import('@/lib/billing').then(({ isBillingConfigured, syncProPlanFromServer }) => {
+        const contactEmail = nextProfile.billingEmail;
         if (isBillingConfigured() && nextProfile.deviceId) {
-          syncProPlanFromServer(nextProfile.deviceId);
+          syncProPlanFromServer(nextProfile.deviceId, contactEmail).then(() => {
+            void pushDeviceBackup(nextProfile.authUserId);
+          });
+        } else if (nextProfile.authUserId) {
+          void pushDeviceBackup(nextProfile.authUserId);
         }
       });
     })();
