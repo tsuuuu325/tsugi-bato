@@ -13,6 +13,7 @@ import {
 import { getReferenceBpm } from '@/types';
 import { getLocalSyncCode, getShareUrlWithSync } from '@/lib/deviceSync';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { useAuth } from '@/auth/AuthProvider';
 
 export function MyPage() {
   const { t, formatBpmSections } = useI18n();
@@ -46,8 +47,9 @@ export function MyPage() {
     if (nameInput.trim()) setUser(nameInput.trim());
   };
 
+  const { isLoggedIn, email } = useAuth();
   const syncCode = getLocalSyncCode();
-  const showSync = isSupabaseConfigured();
+  const showSyncFallback = isSupabaseConfigured() && !isLoggedIn;
 
   const copySyncUrl = async () => {
     const url = getShareUrlWithSync('/');
@@ -92,7 +94,21 @@ export function MyPage() {
         )}
       </section>
 
-      {showSync && (
+      {isLoggedIn && email && (
+        <section className="card sync-card">
+          <p className="hint">{t('my.loggedInSync', { email })}</p>
+          <Link to="/login" className="btn btn-secondary">{t('nav.account')}</Link>
+        </section>
+      )}
+
+      {!isLoggedIn && isSupabaseConfigured() && (
+        <section className="card sync-card">
+          <p className="hint">{t('my.loginPrompt')}</p>
+          <Link to="/login" className="btn btn-primary">{t('my.loginLink')}</Link>
+        </section>
+      )}
+
+      {showSyncFallback && (
         <section className="card sync-card">
           <h2 className="section-title">{t('my.syncTitle')}</h2>
           <p className="hint hint--compact">{t('my.syncDesc')}</p>

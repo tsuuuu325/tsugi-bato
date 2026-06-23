@@ -9,6 +9,7 @@ import { TimelinePage } from '@/pages/TimelinePage';
 import { MyPage } from '@/pages/MyPage';
 import { ContributorProfilePage } from '@/pages/ContributorProfilePage';
 import { ProPage } from '@/pages/ProPage';
+import { LoginPage } from '@/pages/LoginPage';
 import { TermsPage } from '@/pages/legal/TermsPage';
 import { PrivacyPage } from '@/pages/legal/PrivacyPage';
 import { TokushohoPage } from '@/pages/legal/TokushohoPage';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/song/:code" element={<SongPage />} />
         <Route path="/s/:code" element={<SongPage />} />
         <Route path="/me" element={<MyPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/u/:contributorKey" element={<ContributorProfilePage />} />
         <Route path="/pro" element={<ProPage />} />
         <Route path="/legal/terms" element={<TermsPage />} />

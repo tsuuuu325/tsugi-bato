@@ -124,6 +124,8 @@ export interface UserProfile {
   billingName?: string;
   /** クラウド同期コード（LINE / X 等の別ブラウザ復元用） */
   syncCode?: string;
+  /** Supabase Auth ユーザーID（ログイン時） */
+  authUserId?: string;
 }
 
 export interface FeedComment {

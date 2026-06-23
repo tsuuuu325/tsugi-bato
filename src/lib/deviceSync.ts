@@ -15,6 +15,7 @@ const LAST_PUSH_KEY = 'tsugi-bato-sync-pushed-at';
 interface DeviceBackupRow {
   device_id: string;
   sync_code: string;
+  user_id?: string | null;
   profile: UserProfile;
   songs: Song[];
   layers: Layer[];
@@ -23,6 +24,10 @@ interface DeviceBackupRow {
 
 let pullComplete = false;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function resetDeviceSyncPull(): void {
+  pullComplete = false;
+}
 
 export function isDeviceSyncReady(): boolean {
   return pullComplete;
@@ -78,6 +83,13 @@ export function applyBackupLocally(backup: DeviceBackupRow): void {
   }
 }
 
+async function fetchBackupByUserId(userId: string): Promise<DeviceBackupRow | null> {
+  const rows = await supabaseGet<DeviceBackupRow[]>(
+    `device_backups?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  );
+  return rows?.[0] ?? null;
+}
+
 async function fetchBackupBySyncCode(syncCode: string): Promise<DeviceBackupRow | null> {
   const rows = await supabaseGet<DeviceBackupRow[]>(
     `device_backups?sync_code=eq.${encodeURIComponent(syncCode)}&select=*`,
@@ -98,6 +110,26 @@ function shouldApplyRemote(remoteUpdatedAt: string): boolean {
   return new Date(remoteUpdatedAt).getTime() > new Date(localPushedAt).getTime();
 }
 
+export async function linkAuthUser(userId: string, email?: string): Promise<void> {
+  const profile = getUserProfile();
+  saveUserProfile({
+    ...profile,
+    authUserId: userId,
+    billingEmail: profile.billingEmail || email,
+  });
+
+  const remote = await fetchBackupByUserId(userId);
+  const localHasData = getAllSongs().some((s) => !s.isExample);
+
+  if (remote && shouldApplyRemote(remote.updated_at)) {
+    applyBackupLocally(remote);
+  } else if (localHasData || profile.username.trim()) {
+    await pushDeviceBackup(userId);
+  }
+
+  pullComplete = true;
+}
+
 export async function pullDeviceBackup(search = window.location.search): Promise<boolean> {
   if (!isSupabaseConfigured()) {
     pullComplete = true;
@@ -105,6 +137,16 @@ export async function pullDeviceBackup(search = window.location.search): Promise
   }
 
   try {
+    const profile = getUserProfile();
+    if (profile.authUserId) {
+      const byUser = await fetchBackupByUserId(profile.authUserId);
+      if (byUser && shouldApplyRemote(byUser.updated_at)) {
+        applyBackupLocally(byUser);
+        return true;
+      }
+      return false;
+    }
+
     const urlSyncCode = getSyncCodeFromSearch(search);
     if (urlSyncCode) {
       const byCode = await fetchBackupBySyncCode(urlSyncCode);
@@ -127,12 +169,13 @@ export async function pullDeviceBackup(search = window.location.search): Promise
   return false;
 }
 
-export async function pushDeviceBackup(): Promise<boolean> {
+export async function pushDeviceBackup(forcedUserId?: string): Promise<boolean> {
   if (!isSupabaseConfigured() || !pullComplete) return false;
 
   const profile = getUserProfile();
   const deviceId = profile.deviceId || ensureDeviceId();
   const syncCode = ensureLocalSyncCode();
+  const userId = forcedUserId ?? profile.authUserId;
   const songs = getAllSongs().filter((s) => !s.isExample);
   const songIds = new Set(songs.map((s) => s.id));
   const layers = getAllLayers().filter((l) => songIds.has(l.songId));
@@ -141,13 +184,16 @@ export async function pushDeviceBackup(): Promise<boolean> {
   const payload = {
     device_id: deviceId,
     sync_code: syncCode,
-    profile: { ...profile, deviceId, syncCode },
+    user_id: userId ?? null,
+    profile: { ...profile, deviceId, syncCode, authUserId: userId },
     songs,
     layers,
     updated_at: updatedAt,
   };
 
-  const ok = await supabaseUpsert('device_backups', payload, 'device_id');
+  const ok = userId
+    ? await supabaseUpsert('device_backups', payload, 'user_id')
+    : await supabaseUpsert('device_backups', payload, 'device_id');
   if (ok) {
     localStorage.setItem(LAST_PUSH_KEY, updatedAt);
   }
@@ -172,6 +218,7 @@ export function buildUrlWithSync(path: string): string {
 }
 
 export function attachSyncCodeToUrl(): void {
+  if (getUserProfile().authUserId) return;
   const syncCode = getLocalSyncCode();
   if (!syncCode) return;
   const url = new URL(window.location.href);
@@ -185,7 +232,9 @@ export function getShareUrlWithSync(sharePath: string): string {
     ? sharePath
     : `${window.location.origin}${sharePath.startsWith('/') ? sharePath : `/${sharePath}`}`;
   const url = new URL(path);
-  const syncCode = getLocalSyncCode();
-  if (syncCode) url.searchParams.set('sync', syncCode);
+  if (!getUserProfile().authUserId) {
+    const syncCode = getLocalSyncCode();
+    if (syncCode) url.searchParams.set('sync', syncCode);
+  }
   return url.toString();
 }

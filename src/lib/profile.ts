@@ -34,6 +34,7 @@ export function ensureDeviceId(): string {
     billingEmail: profile.billingEmail,
     billingName: profile.billingName,
     syncCode: profile.syncCode,
+    authUserId: profile.authUserId,
   });
   return deviceId;
 }
@@ -58,6 +59,7 @@ export function getUserProfile(): UserProfile {
       billingEmail: raw.billingEmail,
       billingName: raw.billingName,
       syncCode: raw.syncCode,
+      authUserId: raw.authUserId,
     };
   }
   return {
@@ -72,6 +74,7 @@ export function getUserProfile(): UserProfile {
     billingEmail: raw.billingEmail,
     billingName: raw.billingName,
     syncCode: raw.syncCode,
+    authUserId: raw.authUserId,
   };
 }
 
@@ -97,6 +100,7 @@ export function saveUserProfile(profile: UserProfile): void {
     billingEmail: profile.billingEmail,
     billingName: profile.billingName,
     syncCode: profile.syncCode,
+    authUserId: profile.authUserId,
   });
   void import('@/lib/deviceSync').then(({ scheduleDeviceBackup }) => scheduleDeviceBackup());
 }

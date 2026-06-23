@@ -4,11 +4,15 @@ import { useI18n } from '@/i18n/LocaleProvider';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { trackPageView } from '@/lib/analytics';
 import { attachSyncCodeToUrl } from '@/lib/deviceSync';
+import { isAuthConfigured } from '@/lib/auth';
+import { useAuth } from '@/auth/AuthProvider';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const { t } = useI18n();
+  const { isLoggedIn } = useAuth();
+  const showLogin = isAuthConfigured();
 
   useEffect(() => {
     trackPageView(location.pathname);
@@ -37,6 +41,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Link to="/timeline" className={`header-link ${location.pathname === '/timeline' ? 'header-link--active' : ''}`}>
             🌍 {t('nav.timeline')}
           </Link>
+          {showLogin && (
+            <Link
+              to="/login"
+              className={`header-link ${location.pathname === '/login' ? 'header-link--active' : ''}`}
+            >
+              {isLoggedIn ? t('nav.account') : t('nav.login')}
+            </Link>
+          )}
           <LanguageSwitcher />
           {!isHome && (
             <Link to="/" className="back-link">

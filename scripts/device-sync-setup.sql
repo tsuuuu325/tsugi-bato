@@ -4,6 +4,7 @@
 create table if not exists device_backups (
   device_id text primary key,
   sync_code text not null unique,
+  user_id uuid unique,
   profile jsonb not null default '{}',
   songs jsonb not null default '[]',
   layers jsonb not null default '[]',
@@ -11,6 +12,10 @@ create table if not exists device_backups (
 );
 
 create index if not exists device_backups_sync_code on device_backups(sync_code);
+create index if not exists device_backups_user_id on device_backups(user_id);
+
+alter table device_backups add column if not exists user_id uuid unique;
+create index if not exists device_backups_user_id on device_backups(user_id);
 
 alter table device_backups enable row level security;
 
