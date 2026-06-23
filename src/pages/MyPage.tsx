@@ -11,6 +11,8 @@ import {
   type MySongEntry,
 } from '@/lib/mySongs';
 import { getReferenceBpm } from '@/types';
+import { getLocalSyncCode, getShareUrlWithSync } from '@/lib/deviceSync';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export function MyPage() {
   const { t, formatBpmSections } = useI18n();
@@ -42,6 +44,19 @@ export function MyPage() {
   const handleSaveProfile = () => {
     if (nameLocked) return;
     if (nameInput.trim()) setUser(nameInput.trim());
+  };
+
+  const syncCode = getLocalSyncCode();
+  const showSync = isSupabaseConfigured();
+
+  const copySyncUrl = async () => {
+    const url = getShareUrlWithSync('/');
+    try {
+      await navigator.clipboard.writeText(url);
+      alert(t('my.syncCopied'));
+    } catch {
+      prompt(t('share.copyPrompt'), url);
+    }
   };
 
   return (
@@ -76,6 +91,22 @@ export function MyPage() {
           </>
         )}
       </section>
+
+      {showSync && (
+        <section className="card sync-card">
+          <h2 className="section-title">{t('my.syncTitle')}</h2>
+          <p className="hint hint--compact">{t('my.syncDesc')}</p>
+          {syncCode && (
+            <p className="sync-code-row">
+              <span className="label">{t('my.syncCodeLabel')}</span>
+              <span className="share-value">{syncCode}</span>
+            </p>
+          )}
+          <button type="button" className="btn btn-secondary" onClick={copySyncUrl}>
+            {t('my.syncCopyHome')}
+          </button>
+        </section>
+      )}
 
       <section className="section">
         <h2 className="section-title">{t('my.songsTitle')}</h2>

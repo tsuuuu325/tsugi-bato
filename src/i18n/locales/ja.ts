@@ -135,6 +135,11 @@ const ja: MessageTree = {
     songsTitle: '関わった曲',
     empty: 'まだ関わった曲がありません',
     inProgress: '制作中',
+    syncTitle: '端末の連携',
+    syncDesc: 'LINE・X（Twitter）などアプリ内ブラウザはデータが別保存になります。下のURLをブックマークすれば、どのアプリから開いても同じデータになります。',
+    syncCodeLabel: '連携コード',
+    syncCopyHome: '連携URLをコピー',
+    syncCopied: '✅ 連携URLをコピーしました',
   },
   song: {
     notFound: '曲が見つかりません',

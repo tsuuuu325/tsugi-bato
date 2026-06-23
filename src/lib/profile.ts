@@ -33,6 +33,7 @@ export function ensureDeviceId(): string {
     dailyExtendSessions: profile.dailyExtendSessions,
     billingEmail: profile.billingEmail,
     billingName: profile.billingName,
+    syncCode: profile.syncCode,
   });
   return deviceId;
 }
@@ -56,6 +57,7 @@ export function getUserProfile(): UserProfile {
       dailyExtendSessions: raw.dailyExtendSessions,
       billingEmail: raw.billingEmail,
       billingName: raw.billingName,
+      syncCode: raw.syncCode,
     };
   }
   return {
@@ -69,6 +71,7 @@ export function getUserProfile(): UserProfile {
     dailyExtendSessions: raw.dailyExtendSessions,
     billingEmail: raw.billingEmail,
     billingName: raw.billingName,
+    syncCode: raw.syncCode,
   };
 }
 
@@ -93,7 +96,9 @@ export function saveUserProfile(profile: UserProfile): void {
     dailyExtendSessions: profile.dailyExtendSessions,
     billingEmail: profile.billingEmail,
     billingName: profile.billingName,
+    syncCode: profile.syncCode,
   });
+  void import('@/lib/deviceSync').then(({ scheduleDeviceBackup }) => scheduleDeviceBackup());
 }
 
 export function getUsername(): string {

@@ -135,6 +135,11 @@ const en: MessageTree = {
     songsTitle: 'Your tracks',
     empty: 'No tracks yet',
     inProgress: 'In progress',
+    syncTitle: 'Device sync',
+    syncDesc: 'In-app browsers (LINE, X, etc.) keep separate storage. Bookmark the URL below to open the same data from any app.',
+    syncCodeLabel: 'Sync code',
+    syncCopyHome: 'Copy sync URL',
+    syncCopied: '✅ Sync URL copied',
   },
   song: {
     notFound: 'Track not found',

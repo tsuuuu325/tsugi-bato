@@ -40,6 +40,24 @@ export async function supabasePost(path: string, body: unknown): Promise<boolean
   }
 }
 
+export async function supabaseUpsert(
+  path: string,
+  body: unknown,
+  onConflict: string,
+): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const res = await fetch(`${baseUrl()}/rest/v1/${path}?on_conflict=${encodeURIComponent(onConflict)}`, {
+      method: 'POST',
+      headers: { ...headers(), Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function supabaseInsert(path: string, body: unknown): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {

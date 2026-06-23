@@ -122,6 +122,8 @@ export interface UserProfile {
   billingEmail?: string;
   /** Pro決済用の請求名義・氏名 */
   billingName?: string;
+  /** クラウド同期コード（LINE / X 等の別ブラウザ復元用） */
+  syncCode?: string;
 }
 
 export interface FeedComment {

@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n/LocaleProvider';
+import { getShareUrlWithSync } from '@/lib/deviceSync';
 
 interface ShareButtonProps {
   shareCode: string;
@@ -7,7 +8,7 @@ interface ShareButtonProps {
 
 export function ShareButton({ shareCode, title }: ShareButtonProps) {
   const { t } = useI18n();
-  const url = `${window.location.origin}/s/${shareCode}`;
+  const url = getShareUrlWithSync(`/s/${shareCode}`);
   const text = t('share.tweet', { title });
 
   const copyLink = async () => {

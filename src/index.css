@@ -666,6 +666,17 @@ input {
   margin-top: 0.375rem;
 }
 
+.sync-card {
+  margin-bottom: 1rem;
+}
+
+.sync-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
 .example-bpm-card {
   margin-bottom: 1rem;
 }

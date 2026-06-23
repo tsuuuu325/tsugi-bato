@@ -55,6 +55,7 @@ import {
   isSongCreator,
 } from '@/lib/plan';
 import { publishSongToFeed } from '@/lib/feed';
+import { pullDeviceBackup, scheduleDeviceBackup, attachSyncCodeToUrl, pushDeviceBackup } from '@/lib/deviceSync';
 import { VIRTUAL_PART_LOOP_ID } from '@/data/loops';
 import { t as i18nT } from '@/i18n/core';
 import { getDefaultPattern } from '@/audio/engine';
@@ -218,10 +219,23 @@ export const useSongStore = create<SongStore>((set, get) => ({
       deviceId: profile.deviceId,
     });
     get().refreshLists();
-    import('@/lib/billing').then(({ isBillingConfigured, syncProPlanFromServer }) => {
-      if (isBillingConfigured() && profile.deviceId) {
-        syncProPlanFromServer(profile.deviceId);
+    void pullDeviceBackup(window.location.search).then((restored) => {
+      const nextProfile = getUserProfile();
+      set({
+        username: nextProfile.username,
+        avatarEmoji: nextProfile.avatarEmoji,
+        deviceId: nextProfile.deviceId,
+      });
+      get().refreshLists();
+      attachSyncCodeToUrl();
+      if (restored) {
+        void pushDeviceBackup();
       }
+      import('@/lib/billing').then(({ isBillingConfigured, syncProPlanFromServer }) => {
+        if (isBillingConfigured() && nextProfile.deviceId) {
+          syncProPlanFromServer(nextProfile.deviceId);
+        }
+      });
     });
   },
 
@@ -248,6 +262,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
       completedSongs: getCompletedSongs(),
       exampleSongs: getExampleSongs(),
     });
+    scheduleDeviceBackup();
   },
 
   loadSongByCode: (code: string) => {

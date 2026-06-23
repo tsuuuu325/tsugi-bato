@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { trackPageView } from '@/lib/analytics';
+import { attachSyncCodeToUrl } from '@/lib/deviceSync';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -11,7 +12,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     trackPageView(location.pathname);
-  }, [location.pathname]);
+    attachSyncCodeToUrl();
+  }, [location.pathname, location.search]);
 
   return (
     <div className="app">
