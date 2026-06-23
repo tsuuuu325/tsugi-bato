@@ -160,6 +160,12 @@ const ja: MessageTree = {
     logout: 'ログアウト',
     loggedOut: '✅ ログアウトしました',
     anonymousHint: 'ログインしなくても遊べますが、ブラウザごとにデータは別保存になります。',
+    redirectTarget: 'ログイン後の戻り先: {url}',
+    setupTitle: '管理者向け: Supabase Auth 設定',
+    setupSiteUrl: 'Site URL → https://tsugi-bato.pages.dev',
+    setupRedirect: 'Redirect URLs → https://tsugi-bato.pages.dev/login',
+    setupEmail: 'Providers → Email を ON',
+    setupGoogle: 'Providers → Google を ON（使う場合）',
   },
   song: {
     notFound: '曲が見つかりません',
@@ -334,6 +340,8 @@ const ja: MessageTree = {
     dailyLayerSessionLimit: '今日の重ね追加は{dailyMax}回までです（「完了」で1回消費）。Pro（月500円）で無制限',
     dailyExtendSessionLimit: '今日の区間追加は{dailyMax}回までです（「完了」で1回消費）。Pro（月500円）で無制限',
     authNotConfigured: 'ログイン機能は未設定です（Supabase Auth）',
+    authGoogleDisabled: 'GoogleログインがSupabaseで有効になっていません。メールログインを使うか、Dashboard → Authentication → Providers → Google を ON にしてください。',
+    authRedirectNotAllowed: 'リダイレクトURLがSupabaseに登録されていません。Redirect URLs に https://tsugi-bato.pages.dev/login を追加してください。',
   },
   plan: {
     freeLabel: '無料プラン',

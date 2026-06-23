@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getAuthSession, subscribeAuthChanges } from '@/lib/auth';
+import { completeAuthCallbackFromUrl, getAuthSession, subscribeAuthChanges } from '@/lib/auth';
 import { linkAuthUser, resetDeviceSyncPull } from '@/lib/deviceSync';
 import { useSongStore } from '@/store/songStore';
 import { getUserProfile } from '@/lib/profile';
@@ -48,12 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    void getAuthSession().then((session) => {
+    const boot = async () => {
+      await completeAuthCallbackFromUrl();
+      const session = await getAuthSession();
       if (cancelled) return;
-      void applySession(session).finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    });
+      await applySession(session);
+      if (!cancelled) setLoading(false);
+    };
+
+    void boot();
 
     const unsub = subscribeAuthChanges((session) => {
       void applySession(session);

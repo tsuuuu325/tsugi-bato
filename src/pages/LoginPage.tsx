@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { useI18n } from '@/i18n/LocaleProvider';
-import { getAuthSession, isAuthConfigured, signInWithEmail, signInWithGoogle, signOut } from '@/lib/auth';
+import { getAuthSession, isAuthConfigured, signInWithEmail, signInWithGoogle, signOut, formatAuthError, getAuthCallbackRedirectUrl, completeAuthCallbackFromUrl } from '@/lib/auth';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
 
 export function LoginPage() {
@@ -14,10 +14,13 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    void completeAuthCallbackFromUrl().then(({ error }) => {
+      if (error) setMessage(`⚠️ ${translateError(formatAuthError(error))}`);
+    });
     void getAuthSession().then((session) => {
       if (session?.user?.email) setInputEmail(session.user.email);
     });
-  }, []);
+  }, [translateError]);
 
   useEffect(() => {
     if (!loading && isLoggedIn) {
@@ -35,7 +38,7 @@ export function LoginPage() {
     const { error } = await signInWithEmail(inputEmail);
     setBusy(false);
     if (error) {
-      setMessage(`⚠️ ${error}`);
+      setMessage(`⚠️ ${translateError(formatAuthError(error))}`);
       return;
     }
     setMessage(t('auth.magicLinkSent'));
@@ -47,7 +50,7 @@ export function LoginPage() {
     const { error } = await signInWithGoogle();
     setBusy(false);
     if (error) {
-      setMessage(`⚠️ ${error}`);
+      setMessage(`⚠️ ${translateError(formatAuthError(error))}`);
     }
   };
 
@@ -112,6 +115,7 @@ export function LoginPage() {
       )}
 
       <p className="hint hint--compact login-anonymous-hint">{t('auth.anonymousHint')}</p>
+      <p className="hint hint--compact">{t('auth.redirectTarget', { url: getAuthCallbackRedirectUrl() })}</p>
     </div>
   );
 }

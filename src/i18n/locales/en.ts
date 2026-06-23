@@ -160,6 +160,12 @@ const en: MessageTree = {
     logout: 'Log out',
     loggedOut: '✅ Logged out',
     anonymousHint: 'You can play without logging in, but each browser keeps separate data.',
+    redirectTarget: 'After login, return to: {url}',
+    setupTitle: 'Admin: Supabase Auth settings',
+    setupSiteUrl: 'Site URL → https://tsugi-bato.pages.dev',
+    setupRedirect: 'Redirect URLs → https://tsugi-bato.pages.dev/login',
+    setupEmail: 'Providers → enable Email',
+    setupGoogle: 'Providers → enable Google (if used)',
   },
   song: {
     notFound: 'Track not found',
@@ -334,6 +340,8 @@ const en: MessageTree = {
     dailyLayerSessionLimit: 'Free plan: {dailyMax} layer sessions per day (each Done counts as one). Pro (¥500/mo) = unlimited',
     dailyExtendSessionLimit: 'Free plan: {dailyMax} extend sessions per day (each Done counts as one). Pro (¥500/mo) = unlimited',
     authNotConfigured: 'Login is not configured (Supabase Auth)',
+    authGoogleDisabled: 'Google sign-in is not enabled in Supabase. Use email login, or enable Google under Authentication → Providers.',
+    authRedirectNotAllowed: 'Redirect URL is not allowlisted in Supabase. Add https://tsugi-bato.pages.dev/login under Redirect URLs.',
   },
   plan: {
     freeLabel: 'Free plan',
