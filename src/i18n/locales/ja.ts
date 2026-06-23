@@ -148,6 +148,8 @@ const ja: MessageTree = {
   },
   auth: {
     title: 'ログイン',
+    accountTitle: 'アカウント',
+    accountDesc: 'ログイン中です。曲データはこのアカウントに紐づいて同期されます。',
     desc: '同じアカウントなら、Safari・LINE・X などどのアプリから開いてもデータが揃います。',
     emailLabel: 'メールアドレス',
     emailRequired: 'メールアドレスを入力してください',
@@ -156,6 +158,8 @@ const ja: MessageTree = {
     inAppBrowserHint: 'X / LINE アプリ内の Google ログインは二段階認証が出やすいです。メールログインか、Safari / Chrome でサイトを開くのがおすすめです。',
     sendMagicLink: 'メールでログイン',
     magicLinkSent: '✅ ログインリンクを送信しました。メールを確認してください。',
+    loggedInSuccess: '✅ ログインしました: {email}',
+    syncActiveHint: '別の端末でも同じメール / Google アカウントでログインすれば、曲データが同期されます。',
     or: 'または',
     google: 'Google でログイン',
     currentAccount: 'ログイン中: {email}',

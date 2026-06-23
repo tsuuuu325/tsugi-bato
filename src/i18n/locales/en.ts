@@ -148,6 +148,8 @@ const en: MessageTree = {
   },
   auth: {
     title: 'Log in',
+    accountTitle: 'Account',
+    accountDesc: 'You are signed in. Your tracks sync to this account.',
     desc: 'One account works everywhere — Safari, LINE, X in-app browsers, and more.',
     emailLabel: 'Email',
     emailRequired: 'Enter your email address',
@@ -156,6 +158,8 @@ const en: MessageTree = {
     inAppBrowserHint: 'Google sign-in inside X or LINE often triggers extra verification. Email sign-in or opening the site in Safari/Chrome works better.',
     sendMagicLink: 'Email me a login link',
     magicLinkSent: '✅ Check your email for the login link.',
+    loggedInSuccess: '✅ Signed in as {email}',
+    syncActiveHint: 'Sign in with the same email or Google account on other devices to sync your tracks.',
     or: 'or',
     google: 'Continue with Google',
     currentAccount: 'Signed in as {email}',

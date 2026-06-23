@@ -7,7 +7,7 @@ import {
   replaceAllSongs,
   replaceAllLayers,
 } from '@/lib/storage';
-import { isSupabaseConfigured, supabaseGet, supabaseUpsert } from '@/lib/supabase';
+import { isSupabaseConfigured, supabaseGet, supabaseUpsert, supabaseInsert, supabasePatch } from '@/lib/supabase';
 
 const SYNC_CODE_KEY = 'tsugi-bato-sync-code';
 const LAST_PUSH_KEY = 'tsugi-bato-sync-pushed-at';
@@ -295,9 +295,34 @@ export async function pushDeviceBackup(forcedUserId?: string): Promise<boolean> 
     updated_at: updatedAt,
   };
 
-  const ok = userId
-    ? await supabaseUpsert('device_backups', payload, 'user_id')
-    : await supabaseUpsert('device_backups', payload, 'device_id');
+  let ok = false;
+  if (userId) {
+    const existingByUser = await fetchBackupByUserId(userId);
+    if (existingByUser) {
+      ok = await supabasePatch(
+        `device_backups?user_id=eq.${encodeURIComponent(userId)}`,
+        {
+          sync_code: syncCode,
+          profile: payload.profile,
+          songs: payload.songs,
+          layers: payload.layers,
+          updated_at: updatedAt,
+        },
+      );
+    } else {
+      const existingByDevice = await fetchBackupByDeviceId(deviceId);
+      if (existingByDevice) {
+        ok = await supabasePatch(
+          `device_backups?device_id=eq.${encodeURIComponent(deviceId)}`,
+          payload,
+        );
+      } else {
+        ok = await supabaseInsert('device_backups', payload);
+      }
+    }
+  } else {
+    ok = await supabaseUpsert('device_backups', payload, 'device_id');
+  }
   if (ok) {
     localStorage.setItem(LAST_PUSH_KEY, updatedAt);
   }

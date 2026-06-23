@@ -24,44 +24,61 @@ function readAuthParams(): URLSearchParams {
   return merged;
 }
 
-/** メール / Google ログイン後の URL パラメータをセッションに交換 */
-export async function completeAuthCallbackFromUrl(): Promise<{ error: string | null }> {
-  if (!supabase) return { error: 'authNotConfigured' };
+/** メール / OAuth コールバック URL からセッションを確立 */
+export async function bootstrapAuthSession(): Promise<{ session: Session | null; error: string | null }> {
+  if (!supabase) return { session: null, error: 'authNotConfigured' };
 
   const params = readAuthParams();
+  const urlError = params.get('error_description') ?? params.get('error');
+  if (urlError) {
+    cleanAuthUrl();
+    return { session: null, error: urlError };
+  }
+
   const tokenHash = params.get('token_hash');
   const otpType = params.get('type');
-
   if (tokenHash && otpType) {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: otpType as EmailOtpType,
     });
-    if (!error) cleanAuthUrl();
-    return { error: error?.message ?? null };
+    cleanAuthUrl();
+    return { session: data.session, error: error?.message ?? null };
   }
 
   const code = params.get('code');
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    cleanAuthUrl();
     if (error) {
       const msg = error.message.toLowerCase();
       if (msg.includes('code verifier') || msg.includes('invalid flow state')) {
-        return { error: 'authMagicLinkWrongBrowser' };
+        return { session: null, error: 'authMagicLinkWrongBrowser' };
       }
-      return { error: error.message };
+      return { session: null, error: error.message };
     }
-    cleanAuthUrl();
-    return { error: null };
+    return { session: data.session, error: null };
   }
 
-  // implicit フロー: #access_token=... は detectSessionInUrl が処理
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    cleanAuthUrl();
+    return { session: data.session, error: error?.message ?? null };
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
-  if (session && (params.has('access_token') || window.location.hash.includes('access_token'))) {
-    cleanAuthUrl();
-  }
+  return { session, error: null };
+}
 
-  return { error: null };
+/** @deprecated bootstrapAuthSession を使用 */
+export async function completeAuthCallbackFromUrl(): Promise<{ error: string | null }> {
+  const { error } = await bootstrapAuthSession();
+  return { error };
 }
 
 export async function getAuthSession(): Promise<Session | null> {
@@ -98,6 +115,11 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
 export async function signOut(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut();
+  const { getUserProfile, saveUserProfile } = await import('@/lib/profile');
+  const profile = getUserProfile();
+  if (profile.authUserId) {
+    saveUserProfile({ ...profile, authUserId: undefined });
+  }
 }
 
 export function subscribeAuthChanges(

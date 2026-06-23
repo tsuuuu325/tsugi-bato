@@ -1,32 +1,39 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { useI18n } from '@/i18n/LocaleProvider';
-import { getAuthSession, isAuthConfigured, signInWithEmail, signInWithGoogle, signOut, formatAuthError, getAuthCallbackRedirectUrl, completeAuthCallbackFromUrl } from '@/lib/auth';
+import {
+  isAuthConfigured,
+  signInWithEmail,
+  signInWithGoogle,
+  signOut,
+  formatAuthError,
+  getAuthCallbackRedirectUrl,
+} from '@/lib/auth';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
 
 export function LoginPage() {
   const { t, translateError } = useI18n();
-  const navigate = useNavigate();
-  const { isLoggedIn, email, loading } = useAuth();
+  const { isLoggedIn, email, loading, authError } = useAuth();
   const [inputEmail, setInputEmail] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void completeAuthCallbackFromUrl().then(({ error }) => {
-      if (error) setMessage(`⚠️ ${translateError(formatAuthError(error))}`);
-    });
-    void getAuthSession().then((session) => {
-      if (session?.user?.email) setInputEmail(session.user.email);
-    });
-  }, [translateError]);
+    if (email) setInputEmail(email);
+  }, [email]);
 
   useEffect(() => {
-    if (!loading && isLoggedIn) {
-      navigate('/', { replace: true });
+    if (authError) {
+      setMessage(`⚠️ ${translateError(formatAuthError(authError))}`);
     }
-  }, [loading, isLoggedIn, navigate]);
+  }, [authError, translateError]);
+
+  useEffect(() => {
+    if (!loading && isLoggedIn && email) {
+      setMessage(t('auth.loggedInSuccess', { email }));
+    }
+  }, [loading, isLoggedIn, email, t]);
 
   const handleEmailLogin = async () => {
     setMessage('');
@@ -55,8 +62,7 @@ export function LoginPage() {
   };
 
   const handleLogout = async () => {
-    const profile = getUserProfile();
-    saveUserProfile({ ...profile, authUserId: undefined });
+    setMessage('');
     await signOut();
     setMessage(t('auth.loggedOut'));
   };
@@ -73,8 +79,8 @@ export function LoginPage() {
 
   return (
     <div className="page login-page">
-      <h1 className="page-title">{t('auth.title')}</h1>
-      <p className="page-desc">{t('auth.desc')}</p>
+      <h1 className="page-title">{isLoggedIn ? t('auth.accountTitle') : t('auth.title')}</h1>
+      <p className="page-desc">{isLoggedIn ? t('auth.accountDesc') : t('auth.desc')}</p>
 
       {message && (
         <div className={`message-box ${message.startsWith('✅') ? 'message-box--ok' : 'message-box--warn'}`}>
@@ -82,40 +88,46 @@ export function LoginPage() {
         </div>
       )}
 
-      <section className="card login-card">
-        <label className="label" htmlFor="login-email">{t('auth.emailLabel')}</label>
-        <input
-          id="login-email"
-          type="email"
-          className="input"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={inputEmail}
-          onChange={(e) => setInputEmail(e.target.value)}
-        />
-        <p className="hint hint--compact">{t('auth.magicLinkHint')}</p>
-        <p className="hint hint--compact">{t('auth.inAppBrowserHint')}</p>
-        <button type="button" className="btn btn-primary btn-large" onClick={handleEmailLogin} disabled={busy}>
-          {t('auth.sendMagicLink')}
-        </button>
+      {!isLoggedIn && (
+        <section className="card login-card">
+          <label className="label" htmlFor="login-email">{t('auth.emailLabel')}</label>
+          <input
+            id="login-email"
+            type="email"
+            className="input"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={inputEmail}
+            onChange={(e) => setInputEmail(e.target.value)}
+          />
+          <p className="hint hint--compact">{t('auth.magicLinkHint')}</p>
+          <p className="hint hint--compact">{t('auth.inAppBrowserHint')}</p>
+          <button type="button" className="btn btn-primary btn-large" onClick={handleEmailLogin} disabled={busy}>
+            {t('auth.sendMagicLink')}
+          </button>
 
-        <div className="login-divider">{t('auth.or')}</div>
+          <div className="login-divider">{t('auth.or')}</div>
 
-        <button type="button" className="btn btn-secondary btn-large" onClick={handleGoogleLogin} disabled={busy}>
-          {t('auth.google')}
-        </button>
-      </section>
+          <button type="button" className="btn btn-secondary btn-large" onClick={handleGoogleLogin} disabled={busy}>
+            {t('auth.google')}
+          </button>
+        </section>
+      )}
 
       {isLoggedIn && email && (
         <section className="card">
           <p className="hint">{t('auth.currentAccount', { email })}</p>
+          <p className="hint hint--compact">{t('auth.syncActiveHint')}</p>
+          <Link to="/me" className="btn btn-primary">{t('nav.myPage')}</Link>
           <button type="button" className="btn btn-secondary" onClick={handleLogout}>
             {t('auth.logout')}
           </button>
         </section>
       )}
 
-      <p className="hint hint--compact login-anonymous-hint">{t('auth.anonymousHint')}</p>
+      {!isLoggedIn && (
+        <p className="hint hint--compact login-anonymous-hint">{t('auth.anonymousHint')}</p>
+      )}
       <p className="hint hint--compact">{t('auth.redirectTarget', { url: getAuthCallbackRedirectUrl() })}</p>
     </div>
   );

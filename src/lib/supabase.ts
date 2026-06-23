@@ -58,6 +58,20 @@ export async function supabaseUpsert(
   }
 }
 
+export async function supabasePatch(path: string, body: unknown): Promise<boolean> {
+  if (!isSupabaseConfigured()) return false;
+  try {
+    const res = await fetch(`${baseUrl()}/rest/v1/${path}`, {
+      method: 'PATCH',
+      headers: { ...headers(), Prefer: 'return=minimal' },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function supabaseInsert(path: string, body: unknown): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
   try {
