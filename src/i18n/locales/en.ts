@@ -151,7 +151,9 @@ const en: MessageTree = {
     desc: 'One account works everywhere — Safari, LINE, X in-app browsers, and more.',
     emailLabel: 'Email',
     emailRequired: 'Enter your email address',
-    magicLinkHint: 'We\'ll email you a sign-in link (no password needed)',
+    magicLinkHint: 'We\'ll email you a sign-in link (no password needed). You can open it from any mail app.',
+    magicLinkSameBrowser: 'If sign-in fails, open the link in the same browser where you requested it.',
+    inAppBrowserHint: 'Google sign-in inside X or LINE often triggers extra verification. Email sign-in or opening the site in Safari/Chrome works better.',
     sendMagicLink: 'Email me a login link',
     magicLinkSent: '✅ Check your email for the login link.',
     or: 'or',
@@ -342,6 +344,7 @@ const en: MessageTree = {
     authNotConfigured: 'Login is not configured (Supabase Auth)',
     authGoogleDisabled: 'Google sign-in is not enabled in Supabase. Use email login, or enable Google under Authentication → Providers.',
     authRedirectNotAllowed: 'Redirect URL is not allowlisted in Supabase. Add https://tsugi-bato.pages.dev/login under Redirect URLs.',
+    authMagicLinkWrongBrowser: 'The sign-in link may have been opened in a different browser. Open it in the same app where you requested it, or request a new link.',
   },
   plan: {
     freeLabel: 'Free plan',

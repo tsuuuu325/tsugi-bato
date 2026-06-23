@@ -7,7 +7,8 @@ export const supabase: SupabaseClient | null =
   url && anonKey
     ? createClient(url, anonKey, {
         auth: {
-          flowType: 'pkce',
+          // implicit: メールリンクを別ブラウザ（Gmailアプリ等）で開いてもログインできる
+          flowType: 'implicit',
           detectSessionInUrl: true,
           persistSession: true,
         },

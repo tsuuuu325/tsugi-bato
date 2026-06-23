@@ -94,6 +94,7 @@ export function LoginPage() {
           onChange={(e) => setInputEmail(e.target.value)}
         />
         <p className="hint hint--compact">{t('auth.magicLinkHint')}</p>
+        <p className="hint hint--compact">{t('auth.inAppBrowserHint')}</p>
         <button type="button" className="btn btn-primary btn-large" onClick={handleEmailLogin} disabled={busy}>
           {t('auth.sendMagicLink')}
         </button>

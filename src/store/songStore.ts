@@ -56,6 +56,8 @@ import {
 } from '@/lib/plan';
 import { publishSongToFeed } from '@/lib/feed';
 import { pullDeviceBackup, scheduleDeviceBackup, attachSyncCodeToUrl, pushDeviceBackup } from '@/lib/deviceSync';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { waitForAuthReady } from '@/lib/authReady';
 import { VIRTUAL_PART_LOOP_ID } from '@/data/loops';
 import { t as i18nT } from '@/i18n/core';
 import { getDefaultPattern } from '@/audio/engine';
@@ -219,7 +221,11 @@ export const useSongStore = create<SongStore>((set, get) => ({
       deviceId: profile.deviceId,
     });
     get().refreshLists();
-    void pullDeviceBackup(window.location.search).then((restored) => {
+    void (async () => {
+      if (isSupabaseConfigured()) {
+        await waitForAuthReady();
+      }
+      const restored = await pullDeviceBackup(window.location.search);
       const nextProfile = getUserProfile();
       set({
         username: nextProfile.username,
@@ -236,7 +242,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
           syncProPlanFromServer(nextProfile.deviceId);
         }
       });
-    });
+    })();
   },
 
   setUser: (name: string, avatarEmoji?: string) => {

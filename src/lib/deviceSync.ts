@@ -25,6 +25,97 @@ interface DeviceBackupRow {
 let pullComplete = false;
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 
+function songTimestamp(song: Song): number {
+  return new Date(song.updatedAt ?? song.createdAt ?? 0).getTime();
+}
+
+function snapshotLocalBackup(deviceId: string): DeviceBackupRow {
+  const profile = getUserProfile();
+  const songs = getAllSongs().filter((s) => !s.isExample);
+  const songIds = new Set(songs.map((s) => s.id));
+  const layers = getAllLayers().filter((l) => songIds.has(l.songId));
+  return {
+    device_id: deviceId,
+    sync_code: ensureLocalSyncCode(),
+    user_id: profile.authUserId ?? null,
+    profile,
+    songs,
+    layers,
+    updated_at: localStorage.getItem(LAST_PUSH_KEY) ?? new Date(0).toISOString(),
+  };
+}
+
+function mergeProfiles(base: UserProfile, extra: Partial<UserProfile>, userId: string, email?: string): UserProfile {
+  const merged: UserProfile = {
+    ...base,
+    ...extra,
+    deviceId: base.deviceId || extra.deviceId || ensureDeviceId(),
+    authUserId: userId,
+  };
+  if (!merged.username?.trim() && extra.username?.trim()) {
+    merged.username = extra.username.trim();
+  }
+  if (extra.plan === 'pro') merged.plan = 'pro';
+  if (email && !merged.billingEmail) merged.billingEmail = email;
+  return merged;
+}
+
+/** 複数ソースの曲・レイヤー・プロフィールを統合（上書きではなくマージ） */
+export function mergeDeviceBackups(
+  sources: Array<DeviceBackupRow | null | undefined>,
+  userId: string,
+  email?: string,
+): DeviceBackupRow {
+  const rows = sources.filter(Boolean) as DeviceBackupRow[];
+  const local = rows[0];
+  const deviceId = local.device_id || ensureDeviceId();
+  const syncCode = rows.map((r) => r.sync_code).find(Boolean) || ensureLocalSyncCode();
+
+  const songMap = new Map<string, Song>();
+  for (const row of rows) {
+    for (const song of row.songs ?? []) {
+      if (song.isExample) continue;
+      const existing = songMap.get(song.id);
+      if (!existing || songTimestamp(song) >= songTimestamp(existing)) {
+        songMap.set(song.id, song);
+      }
+    }
+  }
+
+  const songIds = new Set(songMap.keys());
+  const layerMap = new Map<string, Layer>();
+  for (const row of rows) {
+    for (const layer of row.layers ?? []) {
+      if (!songIds.has(layer.songId)) continue;
+      layerMap.set(layer.id, layer);
+    }
+  }
+
+  let profile = local.profile;
+  for (const row of rows.slice(1)) {
+    profile = mergeProfiles(profile, row.profile ?? {}, userId, email);
+  }
+  profile = mergeProfiles(profile, {}, userId, email);
+  profile.deviceId = deviceId;
+  profile.syncCode = syncCode;
+  profile.authUserId = userId;
+
+  const latestUpdated = rows.reduce(
+    (max, row) => Math.max(max, new Date(row.updated_at).getTime()),
+    Date.now(),
+  );
+
+  return {
+    device_id: deviceId,
+    sync_code: syncCode,
+    user_id: userId,
+    profile,
+    songs: [...songMap.values()],
+    layers: [...layerMap.values()],
+    updated_at: new Date(latestUpdated).toISOString(),
+  };
+}
+
 export function resetDeviceSyncPull(): void {
   pullComplete = false;
 }
@@ -112,21 +203,22 @@ function shouldApplyRemote(remoteUpdatedAt: string): boolean {
 
 export async function linkAuthUser(userId: string, email?: string): Promise<void> {
   const profile = getUserProfile();
+  const deviceId = profile.deviceId || ensureDeviceId();
   saveUserProfile({
     ...profile,
     authUserId: userId,
     billingEmail: profile.billingEmail || email,
   });
 
-  const remote = await fetchBackupByUserId(userId);
-  const localHasData = getAllSongs().some((s) => !s.isExample);
+  const [remoteByUser, remoteByDevice] = await Promise.all([
+    fetchBackupByUserId(userId),
+    fetchBackupByDeviceId(deviceId),
+  ]);
+  const local = snapshotLocalBackup(deviceId);
+  const merged = mergeDeviceBackups([local, remoteByUser, remoteByDevice], userId, email);
 
-  if (remote && shouldApplyRemote(remote.updated_at)) {
-    applyBackupLocally(remote);
-  } else if (localHasData || profile.username.trim()) {
-    await pushDeviceBackup(userId);
-  }
-
+  applyBackupLocally(merged);
+  await pushDeviceBackup(userId);
   pullComplete = true;
 }
 
@@ -135,13 +227,25 @@ export async function pullDeviceBackup(search = window.location.search): Promise
     pullComplete = true;
     return false;
   }
+  if (pullComplete) return false;
 
   try {
     const profile = getUserProfile();
     if (profile.authUserId) {
-      const byUser = await fetchBackupByUserId(profile.authUserId);
-      if (byUser && shouldApplyRemote(byUser.updated_at)) {
-        applyBackupLocally(byUser);
+      const deviceId = profile.deviceId || ensureDeviceId();
+      const [byUser, byDevice] = await Promise.all([
+        fetchBackupByUserId(profile.authUserId),
+        fetchBackupByDeviceId(deviceId),
+      ]);
+      const local = snapshotLocalBackup(deviceId);
+      const merged = mergeDeviceBackups(
+        [local, byUser, byDevice],
+        profile.authUserId,
+        profile.billingEmail,
+      );
+      if (byUser || byDevice || local.songs.length > 0) {
+        applyBackupLocally(merged);
+        await pushDeviceBackup(profile.authUserId);
         return true;
       }
       return false;

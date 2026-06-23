@@ -1,4 +1,4 @@
-import type { Session } from '@supabase/supabase-js';
+import type { EmailOtpType, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseAuthConfigured } from '@/lib/supabaseClient';
 import { getAuthRedirectUrl } from '@/lib/siteUrl';
 
@@ -10,20 +10,58 @@ export function getAuthCallbackRedirectUrl(): string {
   return getAuthRedirectUrl();
 }
 
-/** メール / Google ログイン後の ?code= をセッションに交換 */
+function cleanAuthUrl(): void {
+  window.history.replaceState(null, '', window.location.pathname);
+}
+
+function readAuthParams(): URLSearchParams {
+  const fromSearch = new URLSearchParams(window.location.search);
+  const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const merged = new URLSearchParams(fromSearch);
+  fromHash.forEach((value, key) => {
+    if (!merged.has(key)) merged.set(key, value);
+  });
+  return merged;
+}
+
+/** メール / Google ログイン後の URL パラメータをセッションに交換 */
 export async function completeAuthCallbackFromUrl(): Promise<{ error: string | null }> {
   if (!supabase) return { error: 'authNotConfigured' };
 
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  if (!code) return { error: null };
+  const params = readAuthParams();
+  const tokenHash = params.get('token_hash');
+  const otpType = params.get('type');
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (!error) {
-    const clean = `${window.location.pathname}${window.location.hash}`;
-    window.history.replaceState(null, '', clean);
+  if (tokenHash && otpType) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: otpType as EmailOtpType,
+    });
+    if (!error) cleanAuthUrl();
+    return { error: error?.message ?? null };
   }
-  return { error: error?.message ?? null };
+
+  const code = params.get('code');
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('code verifier') || msg.includes('invalid flow state')) {
+        return { error: 'authMagicLinkWrongBrowser' };
+      }
+      return { error: error.message };
+    }
+    cleanAuthUrl();
+    return { error: null };
+  }
+
+  // implicit フロー: #access_token=... は detectSessionInUrl が処理
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session && (params.has('access_token') || window.location.hash.includes('access_token'))) {
+    cleanAuthUrl();
+  }
+
+  return { error: null };
 }
 
 export async function getAuthSession(): Promise<Session | null> {
@@ -79,6 +117,9 @@ export function formatAuthError(message: string): string {
   }
   if (lower.includes('redirect') && lower.includes('not allowed')) {
     return 'authRedirectNotAllowed';
+  }
+  if (message === 'authMagicLinkWrongBrowser') {
+    return message;
   }
   return message;
 }

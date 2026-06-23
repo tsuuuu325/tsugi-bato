@@ -151,7 +151,9 @@ const ja: MessageTree = {
     desc: '同じアカウントなら、Safari・LINE・X などどのアプリから開いてもデータが揃います。',
     emailLabel: 'メールアドレス',
     emailRequired: 'メールアドレスを入力してください',
-    magicLinkHint: 'ログイン用リンクをメールで送ります（パスワード不要）',
+    magicLinkHint: 'ログイン用リンクをメールで送ります（パスワード不要）。メールのリンクは Gmail アプリ等、どのアプリから開いても OK です。',
+    magicLinkSameBrowser: 'リンクを送ったのと同じブラウザで開いてください（X アプリ内で送ったなら X 内で開く）。',
+    inAppBrowserHint: 'X / LINE アプリ内の Google ログインは二段階認証が出やすいです。メールログインか、Safari / Chrome でサイトを開くのがおすすめです。',
     sendMagicLink: 'メールでログイン',
     magicLinkSent: '✅ ログインリンクを送信しました。メールを確認してください。',
     or: 'または',
@@ -342,6 +344,7 @@ const ja: MessageTree = {
     authNotConfigured: 'ログイン機能は未設定です（Supabase Auth）',
     authGoogleDisabled: 'GoogleログインがSupabaseで有効になっていません。メールログインを使うか、Dashboard → Authentication → Providers → Google を ON にしてください。',
     authRedirectNotAllowed: 'リダイレクトURLがSupabaseに登録されていません。Redirect URLs に https://tsugi-bato.pages.dev/login を追加してください。',
+    authMagicLinkWrongBrowser: 'ログインリンクを別ブラウザで開いた可能性があります。リンクを送ったのと同じアプリ（X 内なら X 内）で開くか、新しいリンクを送ってください。',
   },
   plan: {
     freeLabel: '無料プラン',
