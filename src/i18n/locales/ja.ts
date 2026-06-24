@@ -406,6 +406,7 @@ const ja: MessageTree = {
     agreeHint: '「カードで支払う」を押すと、利用規約・プライバシーポリシーに同意したものとみなします。',
     renewsOn: '次回更新日: {date}',
     expiresOn: 'Pro終了予定日: {date}（解約済み）',
+    testOnlySubscription: 'Stripeのテスト契約が残っています。本番サイトではProになりません。カード明細にも請求は来ていません。Stripeダッシュボード（テストモード）で解約するか、本番用キー（sk_live_）に切り替えてください。',
   },
   legal: {
     terms: '利用規約',

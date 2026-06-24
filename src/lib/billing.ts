@@ -1,11 +1,14 @@
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
+import { isProductionSite } from '@/lib/siteUrl';
 import type { UserPlan } from '@/types';
 
 export interface SubscriptionInfo {
   status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  /** false = Stripe テストモードの契約（本番サイトでは Pro 対象外） */
+  livemode?: boolean;
 }
 
 function functionsBaseUrl(): string | null {
@@ -117,6 +120,22 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   return info.status === 'active' || info.status === 'trialing' || info.status === 'past_due';
 }
 
+/** 本番公開サイトでは Stripe の本番契約（livemode）のみ Pro */
+export function isPaidSubscription(info: SubscriptionInfo | null): boolean {
+  if (!isActiveSubscription(info)) return false;
+  if (isProductionSite()) return info.livemode === true;
+  return true;
+}
+
+export function isTestModeSubscription(info: SubscriptionInfo | null): boolean {
+  if (!info) return false;
+  return isActiveSubscription(info) && info.livemode === false;
+}
+
+function planFromSubscription(info: SubscriptionInfo | null): UserPlan {
+  return isPaidSubscription(info) ? 'pro' : 'free';
+}
+
 /** Stripe 照会が完了するまで null。課金 ON 時は Pro 判定に localStorage を信用しない */
 let verifiedPlan: UserPlan | null = null;
 
@@ -151,7 +170,7 @@ export async function syncProPlanFromServer(deviceId: string, email?: string): P
     return 'free';
   }
 
-  const serverPlan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
+  const serverPlan: UserPlan = planFromSubscription(sub);
   verifiedPlan = serverPlan;
 
   if (profile.plan !== serverPlan) {

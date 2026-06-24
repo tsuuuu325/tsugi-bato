@@ -406,6 +406,7 @@ const en: MessageTree = {
     agreeHint: 'By tapping Pay with card you agree to the Terms and Privacy Policy.',
     renewsOn: 'Renews on: {date}',
     expiresOn: 'Pro ends on: {date} (canceled)',
+    testOnlySubscription: 'A Stripe test subscription is still on file. It does not grant Pro on the live site and your card was not charged. Cancel it in the Stripe Dashboard (test mode) or switch to live keys (sk_live_).',
   },
   legal: {
     terms: 'Terms of Service',

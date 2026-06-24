@@ -10,13 +10,15 @@ import {
   createPortalSession,
   fetchSubscription,
   syncProPlanFromServer,
+  isPaidSubscription,
+  isTestModeSubscription,
   type SubscriptionInfo,
 } from '@/lib/billing';
 import { isProPlan } from '@/lib/plan';
 import { getUserProfile, setBillingContact } from '@/lib/profile';
 
 function isSubActive(info: SubscriptionInfo | null | undefined): boolean {
-  return info?.status === 'active' || info?.status === 'trialing' || info?.status === 'past_due';
+  return isPaidSubscription(info ?? null);
 }
 
 function resolveContactEmail(formEmail: string, authEmail: string | null): string {
@@ -40,6 +42,7 @@ export function ProPage() {
   const [billingName, setBillingName] = useState('');
   const billingReady = isBillingConfigured();
   const isPro = isProPlan() || isSubActive(sub);
+  const isTestOnlySub = isTestModeSubscription(sub);
 
   const showMessage = (text: string, tone: 'ok' | 'warn' | 'neutral' = 'neutral') => {
     setMessage(text);
@@ -185,6 +188,12 @@ export function ProPage() {
       {message && (
         <p className={`hint hint--compact message-box ${messageTone === 'warn' ? 'message-box--warn' : messageTone === 'ok' ? 'message-box--ok' : ''}`}>
           {message}
+        </p>
+      )}
+
+      {isTestOnlySub && (
+        <p className="hint hint--compact message-box message-box--warn">
+          {t('billing.testOnlySubscription')}
         </p>
       )}
 

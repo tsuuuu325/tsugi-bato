@@ -30,12 +30,32 @@ function isActiveStatus(status: string | null | undefined): boolean {
   return status === 'active' || status === 'trialing' || status === 'past_due';
 }
 
-function toResponse(row: Pick<SubscriptionRow, 'status' | 'current_period_end' | 'cancel_at_period_end'>) {
+function toResponse(
+  row: Pick<SubscriptionRow, 'status' | 'current_period_end' | 'cancel_at_period_end'>,
+  livemode = false,
+) {
   return {
     status: row.status ?? 'inactive',
     currentPeriodEnd: row.current_period_end,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    livemode,
   };
+}
+
+function subscriptionResponse(sub: Stripe.Subscription) {
+  return {
+    status: sub.status,
+    currentPeriodEnd: subscriptionPeriodEndIso(sub),
+    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    livemode: sub.livemode,
+  };
+}
+
+async function markDeviceSubscriptionInactive(deviceId: string): Promise<void> {
+  await supabase.from('subscriptions').update({
+    status: 'inactive',
+    updated_at: new Date().toISOString(),
+  }).eq('device_id', deviceId);
 }
 
 async function upsertFromStripeSub(
@@ -223,16 +243,19 @@ Deno.serve(async (req) => {
 
     if (stripeSub) {
       await upsertFromStripeSub(stripeSub, deviceId, hintRow, customer);
-      return jsonResponse({
-        status: stripeSub.status,
-        currentPeriodEnd: subscriptionPeriodEndIso(stripeSub),
-        cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
-      });
+      return jsonResponse(subscriptionResponse(stripeSub));
     }
 
     if (hintRow && isActiveStatus(hintRow.status)) {
-      await copyRowToDevice(hintRow, deviceId);
-      return jsonResponse(toResponse(hintRow));
+      if (hintRow.device_id) {
+        await supabase.from('subscriptions').update({
+          status: 'inactive',
+          updated_at: new Date().toISOString(),
+        }).eq('device_id', hintRow.device_id);
+      }
+      if (!hintRow.device_id || hintRow.device_id !== deviceId) {
+        await markDeviceSubscriptionInactive(deviceId);
+      }
     }
 
     if (!deviceRow) {
@@ -240,10 +263,11 @@ Deno.serve(async (req) => {
         status: 'inactive',
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
+        livemode: false,
       });
     }
 
-    return jsonResponse(toResponse(deviceRow));
+    return jsonResponse(toResponse(deviceRow, false));
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }
