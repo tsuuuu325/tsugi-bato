@@ -12,7 +12,7 @@ export interface SiteStats {
 
 let gaInitialized = false;
 
-function initGoogleAnalytics(): void {
+export function initGoogleAnalytics(): void {
   const gaId = import.meta.env.VITE_GA_MEASUREMENT_ID?.trim();
   if (!gaId || gaInitialized || typeof document === 'undefined') return;
   gaInitialized = true;

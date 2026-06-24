@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Song, SongWithLayers, SongMode, LayerAddMode } from '@/types';
-import { getExampleSongs, seedExampleBeats } from '@/data/exampleBeats';
+import { getExampleSongs, seedExampleBeats, refreshExamplePatterns } from '@/data/exampleBeats';
 import {
   MAX_CONTRIBUTORS,
   DEFAULT_BARS,
@@ -18,6 +18,7 @@ import {
   getSectionBpms,
   getSectionTotalSteps,
   resizeStepPattern,
+  foldPatternToCanonical,
 } from '@/types';
 import {
   getOpenSongs,
@@ -60,7 +61,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { waitForAuthReady } from '@/lib/authReady';
 import { VIRTUAL_PART_LOOP_ID } from '@/data/loops';
 import { t as i18nT } from '@/i18n/core';
-import { getDefaultPattern } from '@/audio/engine';
+import { getDefaultPattern, resolveLayerPattern, getCanonicalPatternLengthForPad } from '@/audio/engine';
 import type { StepPattern } from '@/types';
 
 interface SongStore {
@@ -160,10 +161,12 @@ function completeForTimeline(song: SongWithLayers): SongWithLayers {
 function resizeSectionLayerPatterns(songId: string, sectionIndex: number, sectionBpm: number): void {
   const totalSteps = getSectionTotalSteps(sectionBpm);
   for (const layer of getAllLayers().filter((l) => l.songId === songId && l.sectionIndex === sectionIndex)) {
-    const base = layer.pattern?.length
-      ? layer.pattern
-      : getDefaultPattern(layer.loopId);
-    updateLayer(layer.id, { pattern: resizeStepPattern(base, totalSteps) });
+    const canonicalLen = getCanonicalPatternLengthForPad(layer.loopId);
+    const defaultPat = getDefaultPattern(layer.loopId);
+    const canonical = layer.pattern?.length
+      ? foldPatternToCanonical(layer.pattern, canonicalLen)
+      : defaultPat;
+    updateLayer(layer.id, { pattern: resizeStepPattern(canonical, totalSteps) });
   }
 }
 
@@ -549,10 +552,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
 
     const sectionBpms = Array.from({ length: song.sectionCount }, () => bpm);
     saveSong(buildSongUpdate(song, { bpm, sectionBpms }));
-
-    for (let i = 0; i < song.sectionCount; i++) {
-      resizeSectionLayerPatterns(songId, i, bpm);
-    }
+    refreshExamplePatterns(songId, bpm);
 
     const full = getSongWithLayers(songId)!;
     get().refreshLists();
@@ -714,12 +714,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
     const totalSteps = getSectionTotalSteps(bpm);
     if (stepIndex < 0 || stepIndex >= totalSteps) return null;
 
-    const bar = layer.pattern?.length
-      ? layer.pattern
-      : getDefaultPattern(layer.loopId);
-    const current = layer.pattern?.length === totalSteps
-      ? layer.pattern
-      : resizeStepPattern(bar, totalSteps);
+    const current = resolveLayerPattern(layer.loopId, layer.pattern, bpm);
     const next = [...current] as StepPattern;
     next[stepIndex] = next[stepIndex] ? 0 : 1;
 

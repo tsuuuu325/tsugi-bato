@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tsugi-bato.pages.dev/sitemap.xml

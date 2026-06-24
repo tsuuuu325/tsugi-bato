@@ -1,3 +1,5 @@
+import { getPadById } from '@/data/loops';
+
 export type PadCategory = 'kick' | 'snare' | 'hat' | 'clap' | 'bass' | 'synth' | 'fx' | 'perc' | 'cowbell';
 
 export type SongStatus = 'open' | 'complete';
@@ -386,6 +388,21 @@ export function resizeStepPattern(pattern: StepPattern, totalSteps: number): Ste
   return out;
 }
 
+/** タイル展開済みパターンを元のループ長（16 or 64）に畳み戻す */
+export function foldPatternToCanonical(pattern: StepPattern, canonicalLen: number): StepPattern {
+  if (canonicalLen <= 0) return [];
+  if (pattern.length === canonicalLen) return [...pattern] as StepPattern;
+  const out = Array(canonicalLen).fill(0) as StepPattern;
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i]) out[i % canonicalLen] = 1;
+  }
+  return out;
+}
+
+export function getCanonicalPatternLength(isLong?: boolean): number {
+  return isLong ? LONG_LOOP_STEPS : STEPS_PER_BAR;
+}
+
 /** 10秒に収まるよう調整したステップ間隔 */
 export function getSectionStepMs(_baseBpm: number, sectionBpm: number): number {
   return (SECTION_SECONDS * 1000) / getSectionTotalSteps(sectionBpm);
@@ -468,9 +485,12 @@ export function fitLayerPatternToSection(
   pattern: StepPattern | undefined,
   fallbackBar: StepPattern,
   sectionBpm: number,
+  canonicalLen = STEPS_PER_BAR,
 ): StepPattern {
   const totalSteps = getSectionTotalSteps(sectionBpm);
-  const base = pattern?.length ? pattern : fallbackBar;
+  const base = pattern?.length
+    ? foldPatternToCanonical(pattern, canonicalLen)
+    : fallbackBar;
   return resizeStepPattern(base, totalSteps);
 }
 
@@ -487,10 +507,11 @@ export function normalizeSongWithLayers(song: SongWithLayers, maxSections?: numb
     const normalized = normalizeLayer(layer, index);
     const bpm = sectionBpms[normalized.sectionIndex] ?? song.bpm;
     const totalSteps = getSectionTotalSteps(bpm);
+    const canonicalLen = getCanonicalPatternLength(getPadById(normalized.loopId)?.isLong);
     if (!normalized.pattern || normalized.pattern.length !== totalSteps) {
       const base = normalized.pattern?.length
-        ? normalized.pattern
-        : (Array(STEPS_PER_BAR).fill(0) as StepPattern);
+        ? foldPatternToCanonical(normalized.pattern, canonicalLen)
+        : (Array(canonicalLen).fill(0) as StepPattern);
       return { ...normalized, pattern: resizeStepPattern(base, totalSteps) };
     }
     return normalized;

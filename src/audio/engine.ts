@@ -4,7 +4,7 @@
 
 import { getPadById } from '@/data/loops';
 import type { StepPattern } from '@/types';
-import { STEPS_PER_BAR, LONG_LOOP_STEPS, LONG_LOOP_BARS, BEATS_PER_BAR, DEFAULT_BPM, getSectionStepMs, getAbsoluteSpeedRatio, getSectionTotalSteps, resizeStepPattern } from '@/types';
+import { STEPS_PER_BAR, LONG_LOOP_STEPS, LONG_LOOP_BARS, BEATS_PER_BAR, DEFAULT_BPM, getSectionStepMs, getSectionTotalSteps, resizeStepPattern, foldPatternToCanonical, getCanonicalPatternLength } from '@/types';
 
 export type { StepPattern };
 
@@ -320,6 +320,240 @@ const PRESETS: Record<string, PresetConfig> = {
     pitch: 560,
     volume: 0.58,
     release: 0.13,
+  },
+
+  // Xlowly-style drift phonk — cowbell lead, ~150 BPM, moderate 808
+  xlowly_kick: {
+    kind: 'kick',
+    pattern: pat(0, 4, 8, 12),
+    volume: 0.94,
+    release: 0.78,
+    pitch: 118,
+  },
+  xlowly_hat: {
+    kind: 'hat',
+    pattern: pat(2, 4, 6, 8, 10, 12, 14),
+    volume: 0.24,
+    release: 0.024,
+  },
+  xlowly_snare: {
+    kind: 'snare',
+    pattern: pat(4, 12),
+    volume: 0.74,
+    release: 0.19,
+  },
+  xlowly_bass: {
+    kind: 'bass',
+    pattern: pat(0, 4, 8, 12),
+    notes: [30, 30, 33, 30, 30, 32, 30, 30, 30, 30, 33, 30, 30, 35, 30, 30],
+    volume: 0.66,
+    release: 0.36,
+  },
+  xlowly_cow: {
+    kind: 'cowbell',
+    pattern: pat(0, 4, 6, 8, 12),
+    notes: [70, 70, 73, 70, 68, 70, 73, 70, 70, 73, 70, 68, 70, 73, 68, 65],
+    pitch: 620,
+    volume: 0.58,
+    release: 0.095,
+  },
+  xlowly_vinyl: {
+    kind: 'vinyl',
+    pattern: every(2),
+    volume: 0.11,
+    release: 0.05,
+  },
+  long_xlowly_kick: {
+    kind: 'kick',
+    pattern: pat4([0, 4, 8, 12], [0, 3, 6, 8, 11, 14], [0, 4, 8, 12], [0, 4, 7, 8, 12, 14]),
+    volume: 0.92,
+    release: 0.76,
+    pitch: 118,
+  },
+  long_xlowly_hat: {
+    kind: 'hat',
+    pattern: pat4(
+      [2, 4, 6, 8, 10, 12, 14],
+      [2, 4, 6, 8, 10, 12, 14, 15],
+      [2, 4, 6, 8, 10, 12, 14],
+      [2, 4, 6, 8, 10, 12, 13, 14, 15],
+    ),
+    volume: 0.25,
+    release: 0.022,
+  },
+  long_xlowly_bass: {
+    kind: 'bass',
+    pattern: pat4steady(0, 4, 8, 12),
+    notes: notes4steady(barNotes(30, 30, 33, 30, 30, 32, 30, 30, 30, 30, 33, 30, 30, 35, 30, 30)),
+    volume: 0.64,
+    release: 0.34,
+  },
+  long_xlowly_snare: {
+    kind: 'snare',
+    pattern: pat4([4, 12], [4, 12, 14], [4, 7, 12], [4, 6, 10, 12, 14]),
+    volume: 0.78,
+    release: 0.17,
+  },
+  long_xlowly_cow: {
+    kind: 'cowbell',
+    pattern: pat4(
+      [0, 4, 7, 12],
+      [0, 3, 8, 12],
+      [0, 4, 6, 11],
+      [0, 4, 8, 12, 14],
+    ),
+    notes: notes4(
+      barNotes(70, 70, 73, 70, 68, 70, 73, 70, 70, 73, 70, 68, 70, 73, 68, 65),
+      barNotes(70, 73, 70, 68, 70, 73, 70, 65, 70, 73, 70, 68, 70, 68, 65, 63),
+      barNotes(68, 70, 73, 70, 70, 73, 68, 65, 70, 73, 70, 68, 65, 68, 65, 63),
+      barNotes(70, 70, 73, 70, 73, 70, 68, 65, 70, 73, 70, 68, 70, 73, 68, 60),
+    ),
+    pitch: 620,
+    volume: 0.6,
+    release: 0.1,
+  },
+
+  // Discipline-style industrial groove (example beat — mid-forward, light sub)
+  discipline_kick: {
+    kind: 'kick',
+    pattern: pat(0, 4, 8, 12),
+    volume: 0.86,
+    release: 0.32,
+    pitch: 220,
+  },
+  discipline_hat: {
+    kind: 'hat',
+    pattern: pat(0, 2, 4, 6, 8, 10, 12, 14),
+    volume: 0.16,
+    release: 0.022,
+  },
+  discipline_hat16: {
+    kind: 'hat',
+    pattern: every(1),
+    volume: 0.13,
+    release: 0.018,
+  },
+  discipline_snare: {
+    kind: 'snare',
+    pattern: pat(4, 12),
+    volume: 0.7,
+    release: 0.11,
+  },
+  discipline_rim: {
+    kind: 'snare',
+    pattern: pat(2, 6, 10, 14),
+    volume: 0.2,
+    release: 0.035,
+  },
+  discipline_bass: {
+    kind: 'bass',
+    pattern: pat(0, 4, 8, 12),
+    notes: [40, 40, 43, 40, 40, 40, 43, 40, 40, 40, 43, 40, 40, 47, 40, 40],
+    volume: 0.46,
+    release: 0.07,
+  },
+  discipline_riff: {
+    kind: 'synth',
+    pattern: pat(0, 2, 4, 7, 9, 11, 14),
+    notes: [52, 52, 51, 52, 49, 52, 51, 52, 52, 52, 51, 52, 49, 52, 51, 52],
+    volume: 0.34,
+    release: 0.09,
+  },
+  discipline_clap: {
+    kind: 'clap',
+    pattern: pat(4, 12),
+    volume: 0.4,
+    release: 0.09,
+  },
+  discipline_perc: {
+    kind: 'perc',
+    pattern: pat(3, 7, 11, 15),
+    volume: 0.28,
+    release: 0.05,
+  },
+  discipline_tom: {
+    kind: 'perc',
+    pattern: pat(7, 15),
+    volume: 0.34,
+    release: 0.13,
+  },
+  discipline_shaker: {
+    kind: 'vinyl',
+    pattern: pat(1, 3, 5, 7, 9, 11, 13, 15),
+    volume: 0.1,
+    release: 0.04,
+  },
+  long_discipline_kick: {
+    kind: 'kick',
+    pattern: pat4steady(0, 4, 8, 12),
+    volume: 0.86,
+    release: 0.32,
+    pitch: 220,
+  },
+  long_discipline_snare: {
+    kind: 'snare',
+    pattern: pat4([4, 12], [4, 12], [4, 6, 10, 12], [4, 12]),
+    volume: 0.68,
+    release: 0.11,
+  },
+  long_discipline_hat: {
+    kind: 'hat',
+    pattern: pat4steady(0, 2, 4, 6, 8, 10, 12, 14),
+    volume: 0.16,
+    release: 0.022,
+  },
+  long_discipline_hat16: {
+    kind: 'hat',
+    pattern: pat4(
+      [0, 2, 4, 6, 8, 10, 12, 14],
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      [0, 2, 4, 6, 8, 10, 12, 14],
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ),
+    volume: 0.13,
+    release: 0.018,
+  },
+  long_discipline_bass: {
+    kind: 'bass',
+    pattern: pat4steady(0, 4, 8, 12),
+    notes: notes4steady(barNotes(40, 40, 43, 40, 40, 40, 43, 40, 40, 40, 43, 40, 40, 47, 40, 40)),
+    volume: 0.44,
+    release: 0.07,
+  },
+  long_discipline_riff: {
+    kind: 'synth',
+    pattern: pat4(
+      [0, 2, 4, 7, 9, 11, 14],
+      [0, 2, 4, 7, 9, 11, 14],
+      [0, 2, 5, 7, 10, 12, 14],
+      [0, 2, 4, 7, 9, 11, 13, 14],
+    ),
+    notes: notes4(
+      barNotes(52, 52, 51, 52, 49, 52, 51, 52, 52, 52, 51, 52, 49, 52, 51, 52),
+      barNotes(52, 51, 52, 51, 49, 52, 51, 52, 52, 51, 52, 51, 49, 52, 51, 52),
+      barNotes(49, 52, 51, 52, 49, 51, 52, 52, 49, 52, 51, 52, 49, 51, 52, 52),
+      barNotes(52, 52, 55, 52, 49, 52, 51, 52, 52, 52, 55, 52, 49, 52, 51, 52),
+    ),
+    volume: 0.32,
+    release: 0.1,
+  },
+  long_discipline_pluck: {
+    kind: 'bass',
+    pattern: pat4([0, 8], [0, 4, 8, 12], [0, 8], [0, 4, 8, 12]),
+    notes: notes4(
+      barNotes(47, 47, 47, 47, 47, 47, 47, 47, 49, 49, 49, 49, 49, 49, 49, 49),
+      barNotes(47, 47, 49, 47, 47, 47, 49, 47, 47, 49, 47, 47, 49, 47, 47, 47),
+      barNotes(45, 45, 45, 45, 45, 45, 45, 45, 47, 47, 47, 47, 47, 47, 47, 47),
+      barNotes(47, 47, 49, 47, 47, 49, 47, 47, 47, 49, 47, 47, 49, 47, 47, 45),
+    ),
+    volume: 0.36,
+    release: 0.11,
+  },
+  long_discipline_rim: {
+    kind: 'snare',
+    pattern: pat4([2, 6, 10, 14], [2, 6, 10, 14], [2, 4, 6, 10, 12, 14], [2, 6, 10, 14]),
+    volume: 0.2,
+    release: 0.035,
   },
 
   // EDM
@@ -684,19 +918,22 @@ function triggerClap(ctx: AudioContext, preset: PresetConfig, t: number) {
   }
 }
 
-function triggerCowbell(ctx: AudioContext, preset: PresetConfig, t: number) {
+function triggerCowbell(ctx: AudioContext, preset: PresetConfig, t: number, step = 0) {
   const rel = preset.release;
-  const base = preset.pitch ?? 880;
+  const noteLen = preset.notes?.length ?? 0;
+  const midi = noteLen > 0 ? preset.notes![step % noteLen] : undefined;
+  const base = midi != null ? midiToHz(midi) : (preset.pitch ?? 880);
+  const snappy = rel < 0.12;
   const mix = ctx.createGain();
   mix.gain.setValueAtTime(preset.volume, t);
   mix.gain.exponentialRampToValueAtTime(0.001, t + rel);
 
   for (const ratio of [1, 1.498, 2.01]) {
     const osc = ctx.createOscillator();
-    osc.type = 'square';
+    osc.type = snappy ? 'square' : 'square';
     osc.frequency.value = base * ratio;
     const g = ctx.createGain();
-    g.gain.value = 0.22 / ratio;
+    g.gain.value = (snappy ? 0.28 : 0.22) / ratio;
     osc.connect(g);
     g.connect(mix);
     osc.start(t);
@@ -705,8 +942,8 @@ function triggerCowbell(ctx: AudioContext, preset: PresetConfig, t: number) {
 
   const f = ctx.createBiquadFilter();
   f.type = 'bandpass';
-  f.frequency.value = base * 1.2;
-  f.Q.value = 1.4;
+  f.frequency.value = base * (snappy ? 1.35 : 1.2);
+  f.Q.value = snappy ? 2.8 : 1.4;
   mix.connect(f);
   connectToOut(ctx, f);
 }
@@ -919,33 +1156,26 @@ function triggerVinyl(ctx: AudioContext, preset: PresetConfig, t: number) {
   noiseBurst(ctx, t + preset.release * 0.3, preset.release * 0.5, preset.volume * 0.6, 3500);
 }
 
-function triggerStep(ctx: AudioContext, preset: PresetConfig, time: number, step: number, playbackRate = 1, _sectionBpm = DEFAULT_BPM) {
+function triggerStep(ctx: AudioContext, preset: PresetConfig, time: number, step: number) {
   const t = time;
-  const scaled: PresetConfig = playbackRate === 1
-    ? preset
-    : {
-        ...preset,
-        release: preset.release / playbackRate,
-        pitch: preset.pitch ? preset.pitch * playbackRate : undefined,
-      };
 
-  switch (scaled.kind) {
-    case 'kick': triggerKick(ctx, scaled, t); break;
-    case 'hat': triggerHat(ctx, scaled, t); break;
-    case 'snare': triggerSnare(ctx, scaled, t); break;
-    case 'clap': triggerClap(ctx, scaled, t); break;
-    case 'cowbell': triggerCowbell(ctx, scaled, t); break;
-    case 'bass': triggerBass(ctx, scaled, t, step); break;
-    case 'synth': triggerSynth(ctx, scaled, t, step); break;
+  switch (preset.kind) {
+    case 'kick': triggerKick(ctx, preset, t); break;
+    case 'hat': triggerHat(ctx, preset, t); break;
+    case 'snare': triggerSnare(ctx, preset, t); break;
+    case 'clap': triggerClap(ctx, preset, t); break;
+    case 'cowbell': triggerCowbell(ctx, preset, t, step); break;
+    case 'bass': triggerBass(ctx, preset, t, step); break;
+    case 'synth': triggerSynth(ctx, preset, t, step); break;
     case 'fx':
-      if (scaled.fxStyle === 'gun') triggerGunFx(ctx, scaled, t);
-      else if (scaled.fxStyle === 'siren') triggerSiren(ctx, scaled, t);
-      else if (scaled.fxStyle === 'reverse') triggerReverseFx(ctx, scaled, t);
-      else triggerFx(ctx, scaled, t);
+      if (preset.fxStyle === 'gun') triggerGunFx(ctx, preset, t);
+      else if (preset.fxStyle === 'siren') triggerSiren(ctx, preset, t);
+      else if (preset.fxStyle === 'reverse') triggerReverseFx(ctx, preset, t);
+      else triggerFx(ctx, preset, t);
       break;
-    case 'perc': triggerPerc(ctx, scaled, t); break;
-    case 'vinyl': triggerVinyl(ctx, scaled, t); break;
-    case 'reese': triggerReese(ctx, scaled, t, step); break;
+    case 'perc': triggerPerc(ctx, preset, t); break;
+    case 'vinyl': triggerVinyl(ctx, preset, t); break;
+    case 'reese': triggerReese(ctx, preset, t, step); break;
   }
 }
 
@@ -979,8 +1209,17 @@ export function getPresetPattern(padId: string): StepPattern | null {
   return getDefaultPattern(padId);
 }
 
+export function getCanonicalPatternLengthForPad(padId: string): number {
+  const pad = getPadById(padId);
+  return getCanonicalPatternLength(pad?.isLong);
+}
+
 export function resolveLayerPattern(padId: string, custom?: StepPattern, sectionBpm?: number): StepPattern {
-  const base = custom?.length ? custom : getDefaultPattern(padId);
+  const canonicalLen = getCanonicalPatternLengthForPad(padId);
+  const defaultPat = getDefaultPattern(padId);
+  const base = custom?.length
+    ? foldPatternToCanonical(custom, canonicalLen)
+    : defaultPat;
   if (sectionBpm == null) return base;
   return resizeStepPattern(base, getSectionTotalSteps(sectionBpm));
 }
@@ -1069,11 +1308,10 @@ export class AudioEngine {
         return;
       }
       const now = this.ctx.currentTime;
-      const playbackRate = getAbsoluteSpeedRatio(bpm);
       for (const track of this.tracks) {
         if (track.pattern[this.currentStep]) {
           const noteStep = getNoteStep(track.preset, this.currentStep);
-          triggerStep(this.ctx, track.preset, now + 0.02, noteStep, playbackRate, bpm);
+          triggerStep(this.ctx, track.preset, now + 0.02, noteStep);
         }
       }
       this.notifyStep({ section: 0, step: this.currentStep });
@@ -1126,11 +1364,10 @@ export class AudioEngine {
       const now = this.ctx.currentTime;
       const sectionBpm = this.sectionBpms[this.currentSection] ?? this.baseBpm;
       const totalSteps = getSectionTotalSteps(sectionBpm);
-      const playbackRate = getAbsoluteSpeedRatio(sectionBpm);
       for (const track of this.tracks) {
         if (track.sectionIndex === this.currentSection && track.pattern[this.currentStep]) {
           const noteStep = getNoteStep(track.preset, this.currentStep);
-          triggerStep(this.ctx, track.preset, now + 0.02, noteStep, playbackRate, sectionBpm);
+          triggerStep(this.ctx, track.preset, now + 0.02, noteStep);
         }
       }
       this.notifyStep({ section: this.currentSection, step: this.currentStep });

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useI18n } from '@/i18n/LocaleProvider';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { trackPageView } from '@/lib/analytics';
+import { applyPageSeo } from '@/lib/seo';
 import { attachSyncCodeToUrl } from '@/lib/deviceSync';
 import { isAuthConfigured } from '@/lib/auth';
 import { useAuth } from '@/auth/AuthProvider';
@@ -10,14 +11,15 @@ import { useAuth } from '@/auth/AuthProvider';
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { isLoggedIn } = useAuth();
   const showLogin = isAuthConfigured();
 
   useEffect(() => {
+    applyPageSeo(location.pathname, locale);
     trackPageView(location.pathname);
     attachSyncCodeToUrl();
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, locale]);
 
   return (
     <div className="app">

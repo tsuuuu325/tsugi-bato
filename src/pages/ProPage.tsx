@@ -34,11 +34,17 @@ export function ProPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageTone, setMessageTone] = useState<'ok' | 'warn' | 'neutral'>('neutral');
   const [sub, setSub] = useState<SubscriptionInfo | null>(null);
   const [billingEmail, setBillingEmail] = useState('');
   const [billingName, setBillingName] = useState('');
   const billingReady = isBillingConfigured();
   const isPro = isProPlan() || isSubActive(sub);
+
+  const showMessage = (text: string, tone: 'ok' | 'warn' | 'neutral' = 'neutral') => {
+    setMessage(text);
+    setMessageTone(tone);
+  };
 
   useEffect(() => { init(); }, [init]);
 
@@ -51,7 +57,7 @@ export function ProPage() {
 
   useEffect(() => {
     if (searchParams.get('canceled') === '1') {
-      setMessage(t('billing.canceled'));
+      showMessage(t('billing.canceled'), 'neutral');
       searchParams.delete('canceled');
       setSearchParams(searchParams, { replace: true });
     }
@@ -61,7 +67,7 @@ export function ProPage() {
     if (searchParams.get('success') !== '1') return;
     if (!deviceId || !billingReady) return;
 
-    setMessage(t('billing.success'));
+    showMessage(t('billing.success'), 'ok');
     void (async () => {
       const contactEmail = resolveContactEmail(billingEmail, authEmail);
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -75,7 +81,7 @@ export function ProPage() {
         }
         if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
       }
-      setMessage(t('billing.syncPending'));
+      showMessage(t('billing.syncPending'), 'warn');
       searchParams.delete('success');
       setSearchParams(searchParams, { replace: true });
     })();
@@ -93,55 +99,55 @@ export function ProPage() {
   const handleRestore = async () => {
     if (!deviceId) return;
     if (!billingReady) {
-      setMessage(t('billing.notConfigured'));
+      showMessage(t('billing.notConfigured'), 'warn');
       return;
     }
     const email = resolveContactEmail(billingEmail, authEmail);
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setMessage(t('billing.emailInvalid'));
+      showMessage(t('billing.emailInvalid'), 'warn');
       return;
     }
     setBillingContact(email, billingName.trim() || getUserProfile().billingName || '');
     setLoading(true);
-    setMessage('');
+    showMessage('', 'neutral');
     const plan = await syncProPlanFromServer(deviceId, email);
     const { info, error } = await fetchSubscription(deviceId, email);
     setSub(info);
     setLoading(false);
     if (plan === 'pro' || isSubActive(info)) {
-      setMessage(t('billing.active'));
+      showMessage(t('billing.active'), 'ok');
       return;
     }
     if (isProPlan()) {
-      setMessage(t('billing.cloudProActive'));
+      showMessage(t('billing.cloudProActive'), 'ok');
       return;
     }
     if (error) {
-      setMessage(t('billing.restoreError', { detail: error }));
+      showMessage(t('billing.restoreError'), 'warn');
       return;
     }
-    setMessage(t('billing.restoreFailed'));
+    showMessage(t('billing.restoreFailed'), 'warn');
   };
 
   const handleSubscribe = async () => {
     if (!deviceId) return;
     if (!billingReady) {
-      setMessage(t('billing.notConfigured'));
+      showMessage(t('billing.notConfigured'), 'warn');
       return;
     }
     const email = billingEmail.trim();
     const name = billingName.trim();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setMessage(t('billing.emailInvalid'));
+      showMessage(t('billing.emailInvalid'), 'warn');
       return;
     }
     if (!name) {
-      setMessage(t('billing.nameRequired'));
+      showMessage(t('billing.nameRequired'), 'warn');
       return;
     }
     setBillingContact(email, name);
     setLoading(true);
-    setMessage('');
+    showMessage('', 'neutral');
     const { url, error } = await createCheckoutSession(deviceId, locale, {
       email,
       customerName: name,
@@ -151,7 +157,7 @@ export function ProPage() {
       window.location.href = url;
       return;
     }
-    setMessage(t('billing.errorDetail', { detail: error ?? 'unknown' }));
+    showMessage(t('billing.error'), 'warn');
   };
 
   const handleManage = async () => {
@@ -162,7 +168,7 @@ export function ProPage() {
     const { url, error } = await createPortalSession(deviceId, email || undefined);
     setLoading(false);
     if (url) window.location.href = url;
-    else setMessage(t('billing.portalErrorDetail', { detail: error ?? 'unknown' }));
+    else showMessage(t('billing.portalError'), 'warn');
   };
 
   const periodEnd = sub?.currentPeriodEnd
@@ -177,7 +183,7 @@ export function ProPage() {
       <p className="page-desc">{t('billing.subtitle')}</p>
 
       {message && (
-        <p className={`hint hint--compact message-box ${message.includes('⚠') ? 'message-box--warn' : 'message-box--ok'}`}>
+        <p className={`hint hint--compact message-box ${messageTone === 'warn' ? 'message-box--warn' : messageTone === 'ok' ? 'message-box--ok' : ''}`}>
           {message}
         </p>
       )}

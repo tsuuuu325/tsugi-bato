@@ -6,8 +6,9 @@ import {
   getSectionBpms,
   getSectionTotalSteps,
   resizeStepPattern,
+  foldPatternToCanonical,
 } from '@/types';
-import { getDefaultPattern } from '@/audio/engine';
+import { getDefaultPattern, getCanonicalPatternLengthForPad } from '@/audio/engine';
 import { getUsername, setUsername } from '@/lib/profile';
 
 export { getUsername, setUsername };
@@ -142,11 +143,12 @@ export function getLayersForSong(songId: string): Layer[] {
 
 function fitLayerPattern(layer: Layer, sectionBpm: number): StepPattern | undefined {
   const totalSteps = getSectionTotalSteps(sectionBpm);
+  const canonicalLen = getCanonicalPatternLengthForPad(layer.loopId);
   const fallback = getDefaultPattern(layer.loopId);
   const base = layer.pattern?.length && layer.pattern.some(Boolean)
-    ? layer.pattern
+    ? foldPatternToCanonical(layer.pattern, canonicalLen)
     : fallback;
-  const sized = base.length === totalSteps ? base : resizeStepPattern(base, totalSteps);
+  const sized = resizeStepPattern(base, totalSteps);
   if (
     layer.pattern?.length === sized.length
     && layer.pattern.join('') === sized.join('')
@@ -162,6 +164,7 @@ export function migrateLegacyData(): void {
   for (const layer of allLayers) {
     const song = getSongById(layer.songId);
     if (!song) continue;
+    if (song.isExample) continue;
     const sectionIndex = layer.sectionIndex ?? 0;
     const sectionBpm = song.sectionBpms?.[sectionIndex] ?? song.bpm ?? DEFAULT_BPM;
     const pattern = fitLayerPattern(layer, sectionBpm);

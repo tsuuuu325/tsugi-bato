@@ -4,6 +4,11 @@ import { LocaleProvider } from '@/i18n/LocaleProvider';
 import { AuthProvider } from '@/auth/AuthProvider';
 import App from './App';
 import './index.css';
+import { injectAppJsonLd } from '@/lib/seo';
+import { initGoogleAnalytics } from '@/lib/analytics';
+
+injectAppJsonLd();
+initGoogleAnalytics();
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>

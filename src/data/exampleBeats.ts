@@ -4,9 +4,9 @@ import { getDefaultPattern } from '@/audio/engine';
 import {
   getAllSongs,
   getAllLayers,
-  saveSong,
   replaceAllLayers,
   replaceAllSongs,
+  updateLayer,
 } from '@/lib/storage';
 
 export const VOLENTO_EXAMPLE_ID = 'example-volento-001';
@@ -16,13 +16,42 @@ export const VOLENTO_BPM = 163;
 const EXAMPLES_SEED_KEY = 'tsugi-bato-examples-version';
 export const EXAMPLE_TITLE = 'original phonk';
 
-const EXAMPLES_SEED_VERSION = 'volento-v8';
+const EXAMPLES_SEED_VERSION = 'examples-v16';
 
 const EXAMPLE_CREATOR = 'BeatRelay';
 const EXAMPLE_AVATAR = '💀';
 
+/** シードで管理するサンプル曲 */
+const ACTIVE_EXAMPLE_IDS = [VOLENTO_EXAMPLE_ID] as const;
+/** 削除済みサンプル（localStorage からも除去） */
+const REMOVED_EXAMPLE_IDS = ['example-discipline-001'] as const;
+const EXAMPLE_SONG_IDS = new Set<string>([...ACTIVE_EXAMPLE_IDS, ...REMOVED_EXAMPLE_IDS]);
+
 function fitPattern(loopId: string, bpm: number): Layer['pattern'] {
   return resizeStepPattern(getDefaultPattern(loopId), getSectionTotalSteps(bpm));
+}
+
+/** サンプル曲レイヤーをデフォルトパターンから再生成（BPM変更後の修復用） */
+export function refreshExamplePatterns(songId: string, bpm: number): void {
+  for (const layer of getAllLayers().filter((l) => l.songId === songId)) {
+    updateLayer(layer.id, { pattern: fitPattern(layer.loopId, bpm) });
+  }
+}
+
+function mergeExampleSong(existing: Song | undefined, built: Song): Song {
+  if (!existing) return built;
+  return {
+    ...built,
+    bpm: existing.bpm,
+    sectionBpms: existing.sectionBpms ?? built.sectionBpms,
+  };
+}
+
+function applyExampleBpm(layers: Layer[], bpm: number): Layer[] {
+  return layers.map((layer) => ({
+    ...layer,
+    pattern: fitPattern(layer.loopId, bpm),
+  }));
 }
 
 function buildVolentoExample(now: string): { song: Song; layers: Layer[] } {
@@ -266,21 +295,25 @@ function buildVolentoExample(now: string): { song: Song; layers: Layer[] } {
   return { song, layers };
 }
 
-/** アプリ内サンプル曲を localStorage に投入 */
+/** アプリ内サンプル曲を localStorage に投入（毎回レイヤーパターンを正規状態に同期） */
 export function seedExampleBeats(): void {
-  const existing = getAllSongs().find((s) => s.id === VOLENTO_EXAMPLE_ID && s.isExample);
-  const versionOk = localStorage.getItem(EXAMPLES_SEED_KEY) === EXAMPLES_SEED_VERSION;
-  const needsUpdate = !versionOk || !existing || existing.title !== EXAMPLE_TITLE;
-  if (!needsUpdate) return;
-
   const now = new Date().toISOString();
-  const { song, layers } = buildVolentoExample(now);
+  const existingVolento = getAllSongs().find((s) => s.id === VOLENTO_EXAMPLE_ID);
 
-  const songs = getAllSongs().filter((s) => s.id !== VOLENTO_EXAMPLE_ID);
-  const otherLayers = getAllLayers().filter((l) => l.songId !== VOLENTO_EXAMPLE_ID);
+  const volentoBuilt = buildVolentoExample(now);
+  const volentoSong = mergeExampleSong(existingVolento, volentoBuilt.song);
+  const volentoBpm = volentoSong.sectionBpms?.[0] ?? volentoSong.bpm;
 
-  replaceAllSongs([song, ...songs]);
-  replaceAllLayers([...otherLayers, ...layers]);
+  const volentoData = {
+    song: volentoSong,
+    layers: applyExampleBpm(volentoBuilt.layers, volentoBpm),
+  };
+
+  const songs = getAllSongs().filter((s) => !EXAMPLE_SONG_IDS.has(s.id));
+  const otherLayers = getAllLayers().filter((l) => !EXAMPLE_SONG_IDS.has(l.songId));
+
+  replaceAllSongs([volentoData.song, ...songs]);
+  replaceAllLayers([...otherLayers, ...volentoData.layers]);
 
   localStorage.setItem(EXAMPLES_SEED_KEY, EXAMPLES_SEED_VERSION);
 }

@@ -118,6 +118,40 @@ export const PAD_PACK: PadDefinition[] = [
   { id: 'pad-ex-volento-mem-l', name: 'Volento Melo L', nameJa: 'Volento Melo', category: 'synth', preset: 'long_volento_memphis', color: '#dd1188', colorDark: '#990055', shortLabel: 'VMLP', gridIndex: 911, isLong: true, isExample: true },
   { id: 'pad-ex-volento-cow-l', name: 'Volento Bell L', nameJa: 'Volento CB Loop', category: 'cowbell', preset: 'long_volento_cow', color: '#bbaa00', colorDark: '#776600', shortLabel: 'VCLP', gridIndex: 912, isLong: true, isExample: true },
   { id: 'pad-ex-volento-gun', name: 'Volento Gun', nameJa: 'Volento Gun', category: 'fx', preset: 'volento_gun', color: '#888888', colorDark: '#444444', shortLabel: 'VGUN', gridIndex: 914, isExample: true },
+
+  // ── Example-only pads (Xlowly-style drift phonk demo) ──
+  { id: 'pad-ex-xlow-kick', name: 'Drift Kick', nameJa: 'Drift Kick', category: 'kick', preset: 'xlowly_kick', color: '#cc1133', colorDark: '#880022', shortLabel: 'DKCK', gridIndex: 940, isExample: true },
+  { id: 'pad-ex-xlow-hat', name: 'Drift Hat', nameJa: 'Drift HH', category: 'hat', preset: 'xlowly_hat', color: '#44bbee', colorDark: '#2288aa', shortLabel: 'DKHH', gridIndex: 941, isExample: true },
+  { id: 'pad-ex-xlow-snare', name: 'Drift Snare', nameJa: 'Drift SN', category: 'snare', preset: 'xlowly_snare', color: '#dd4422', colorDark: '#992211', shortLabel: 'DKSN', gridIndex: 942, isExample: true },
+  { id: 'pad-ex-xlow-bass', name: 'Drift 808', nameJa: 'Drift 808', category: 'bass', preset: 'xlowly_bass', color: '#7722cc', colorDark: '#440088', shortLabel: 'DK808', gridIndex: 943, isExample: true },
+  { id: 'pad-ex-xlow-cow', name: 'Drift Cow', nameJa: 'Drift CB', category: 'cowbell', preset: 'xlowly_cow', color: '#ddcc22', colorDark: '#998811', shortLabel: 'DKCB', gridIndex: 944, isExample: true },
+  { id: 'pad-ex-xlow-vinyl', name: 'Drift Tape', nameJa: 'Drift Tape', category: 'fx', preset: 'xlowly_vinyl', color: '#887766', colorDark: '#554433', shortLabel: 'DKTP', gridIndex: 945, isExample: true },
+  { id: 'pad-ex-xlow-kick-l', name: 'Drift Kick L', nameJa: 'Drift K Loop', category: 'kick', preset: 'long_xlowly_kick', color: '#bb1133', colorDark: '#770022', shortLabel: 'DKKLP', gridIndex: 946, isLong: true, isExample: true },
+  { id: 'pad-ex-xlow-hat-l', name: 'Drift HH L', nameJa: 'Drift HH Loop', category: 'hat', preset: 'long_xlowly_hat', color: '#3399cc', colorDark: '#115577', shortLabel: 'DKHLP', gridIndex: 947, isLong: true, isExample: true },
+  { id: 'pad-ex-xlow-bass-l', name: 'Drift 808 L', nameJa: 'Drift 808 Loop', category: 'bass', preset: 'long_xlowly_bass', color: '#6611bb', colorDark: '#330077', shortLabel: 'DK8LP', gridIndex: 948, isLong: true, isExample: true },
+  { id: 'pad-ex-xlow-cow-l', name: 'Drift Cow L', nameJa: 'Drift CB Loop', category: 'cowbell', preset: 'long_xlowly_cow', color: '#ccbb00', colorDark: '#887700', shortLabel: 'DKCLP', gridIndex: 949, isLong: true, isExample: true },
+  { id: 'pad-ex-xlow-snare-l', name: 'Drift SN L', nameJa: 'Drift SN Loop', category: 'snare', preset: 'long_xlowly_snare', color: '#cc3311', colorDark: '#881100', shortLabel: 'DKSLP', gridIndex: 950, isLong: true, isExample: true },
+
+  // ── Example-only pads (Discipline-style industrial demo) ──
+  { id: 'pad-ex-disc-kick', name: 'Disc Kick', nameJa: 'Disc Kick', category: 'kick', preset: 'discipline_kick', color: '#cc4400', colorDark: '#882200', shortLabel: 'DK', gridIndex: 920, isExample: true },
+  { id: 'pad-ex-disc-hat', name: 'Disc HH', nameJa: 'Disc HH', category: 'hat', preset: 'discipline_hat', color: '#8899aa', colorDark: '#556677', shortLabel: 'DHH', gridIndex: 921, isExample: true },
+  { id: 'pad-ex-disc-hat16', name: 'Disc 16HH', nameJa: 'Disc 16HH', category: 'hat', preset: 'discipline_hat16', color: '#99aabb', colorDark: '#667788', shortLabel: 'D16', gridIndex: 922, isExample: true },
+  { id: 'pad-ex-disc-snare', name: 'Disc Snare', nameJa: 'Disc SN', category: 'snare', preset: 'discipline_snare', color: '#dd6633', colorDark: '#994422', shortLabel: 'DSN', gridIndex: 923, isExample: true },
+  { id: 'pad-ex-disc-rim', name: 'Disc Rim', nameJa: 'Disc Rim', category: 'snare', preset: 'discipline_rim', color: '#aa7755', colorDark: '#775533', shortLabel: 'DRM', gridIndex: 924, isExample: true },
+  { id: 'pad-ex-disc-bass', name: 'Disc Bass', nameJa: 'Disc Bass', category: 'bass', preset: 'discipline_bass', color: '#556677', colorDark: '#334455', shortLabel: 'DBS', gridIndex: 925, isExample: true },
+  { id: 'pad-ex-disc-riff', name: 'Disc Riff', nameJa: 'Disc Riff', category: 'synth', preset: 'discipline_riff', color: '#ee8844', colorDark: '#bb5522', shortLabel: 'DRF', gridIndex: 926, isExample: true },
+  { id: 'pad-ex-disc-clap', name: 'Disc Clap', nameJa: 'Disc Clap', category: 'clap', preset: 'discipline_clap', color: '#cc8866', colorDark: '#885544', shortLabel: 'DCL', gridIndex: 927, isExample: true },
+  { id: 'pad-ex-disc-perc', name: 'Disc Perc', nameJa: 'Disc Perc', category: 'perc', preset: 'discipline_perc', color: '#aa6644', colorDark: '#774433', shortLabel: 'DPC', gridIndex: 928, isExample: true },
+  { id: 'pad-ex-disc-tom', name: 'Disc Tom', nameJa: 'Disc Tom', category: 'perc', preset: 'discipline_tom', color: '#996655', colorDark: '#664433', shortLabel: 'DTM', gridIndex: 929, isExample: true },
+  { id: 'pad-ex-disc-shaker', name: 'Disc Shake', nameJa: 'Disc Shake', category: 'fx', preset: 'discipline_shaker', color: '#778899', colorDark: '#445566', shortLabel: 'DSK', gridIndex: 930, isExample: true },
+  { id: 'pad-ex-disc-kick-l', name: 'Disc Kick L', nameJa: 'Disc K Loop', category: 'kick', preset: 'long_discipline_kick', color: '#bb4400', colorDark: '#771100', shortLabel: 'DKLP', gridIndex: 931, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-snare-l', name: 'Disc Snare L', nameJa: 'Disc SN Loop', category: 'snare', preset: 'long_discipline_snare', color: '#cc5522', colorDark: '#883311', shortLabel: 'DSLP', gridIndex: 932, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-hat-l', name: 'Disc HH L', nameJa: 'Disc HH Loop', category: 'hat', preset: 'long_discipline_hat', color: '#778899', colorDark: '#445566', shortLabel: 'DHLP', gridIndex: 933, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-hat16-l', name: 'Disc 16HH L', nameJa: 'Disc 16 Loop', category: 'hat', preset: 'long_discipline_hat16', color: '#8899aa', colorDark: '#556677', shortLabel: 'D16L', gridIndex: 934, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-bass-l', name: 'Disc Bass L', nameJa: 'Disc Bass Loop', category: 'bass', preset: 'long_discipline_bass', color: '#445566', colorDark: '#223344', shortLabel: 'DBLP', gridIndex: 935, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-riff-l', name: 'Disc Riff L', nameJa: 'Disc Riff Loop', category: 'synth', preset: 'long_discipline_riff', color: '#dd7733', colorDark: '#aa4411', shortLabel: 'DRLP', gridIndex: 936, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-rim-l', name: 'Disc Rim L', nameJa: 'Disc Rim Loop', category: 'snare', preset: 'long_discipline_rim', color: '#997755', colorDark: '#664433', shortLabel: 'DRMLP', gridIndex: 937, isLong: true, isExample: true },
+  { id: 'pad-ex-disc-pluck-l', name: 'Disc Pluck L', nameJa: 'Disc Pluck Loop', category: 'bass', preset: 'long_discipline_pluck', color: '#668899', colorDark: '#445566', shortLabel: 'DPLP', gridIndex: 938, isLong: true, isExample: true },
 ];
 
 export const VIRTUAL_PART_LOOP_ID = 'pad-hat-cl';
