@@ -72,6 +72,9 @@ interface SongStore {
   completedSongs: SongWithLayers[];
   exampleSongs: Song[];
   isPlaying: boolean;
+  /** Stripe 照会完了まで false。照会後にのみ Pro 判定を反映 */
+  proSyncDone: boolean;
+  proEntitled: boolean;
 
   init: () => void;
   setUser: (name: string, avatarEmoji?: string) => void;
@@ -194,6 +197,15 @@ function buildSongUpdate(song: SongWithLayers, overrides: Partial<Song>): Song {
 }
 
 const PURGE_OPEN_SONGS_KEY = 'tsugi-bato-purged-open-songs-v1';
+let storeInitDone = false;
+
+async function refreshBillingEntitlement(deviceId: string, email?: string): Promise<void> {
+  const { isBillingConfigured, syncProPlanFromServer } = await import('@/lib/billing');
+  if (!isBillingConfigured() || !deviceId) return;
+  await syncProPlanFromServer(deviceId, email);
+  const profile = getUserProfile();
+  void pushDeviceBackup(profile.authUserId);
+}
 
 export const useSongStore = create<SongStore>((set, get) => ({
   username: '',
@@ -203,8 +215,17 @@ export const useSongStore = create<SongStore>((set, get) => ({
   completedSongs: [],
   exampleSongs: [],
   isPlaying: false,
+  proSyncDone: false,
+  proEntitled: false,
 
   init: () => {
+    if (storeInitDone) {
+      const profile = getUserProfile();
+      void refreshBillingEntitlement(profile.deviceId, profile.billingEmail);
+      return;
+    }
+    storeInitDone = true;
+
     const wipeRemote = migrateStorageVersion();
     seedDemoData();
     seedExampleBeats();
@@ -240,16 +261,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
       if (restored) {
         void pushDeviceBackup();
       }
-      import('@/lib/billing').then(({ isBillingConfigured, syncProPlanFromServer }) => {
-        const contactEmail = nextProfile.billingEmail;
-        if (isBillingConfigured() && nextProfile.deviceId) {
-          syncProPlanFromServer(nextProfile.deviceId, contactEmail).then(() => {
-            void pushDeviceBackup(nextProfile.authUserId);
-          });
-        } else if (nextProfile.authUserId) {
-          void pushDeviceBackup(nextProfile.authUserId);
-        }
-      });
+      void refreshBillingEntitlement(nextProfile.deviceId, nextProfile.billingEmail);
     })();
   },
 

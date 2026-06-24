@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
 import { isProductionSite } from '@/lib/siteUrl';
+import { useSongStore } from '@/store/songStore';
 import type { UserPlan } from '@/types';
 
 export interface SubscriptionInfo {
@@ -22,6 +23,10 @@ function billingEnabled(): boolean {
 
 export function isBillingConfigured(): boolean {
   return billingEnabled();
+}
+
+function setEntitlementState(proSyncDone: boolean, proEntitled: boolean): void {
+  useSongStore.setState({ proSyncDone, proEntitled });
 }
 
 async function invokeFunction<T>(name: string, body: unknown): Promise<{ data: T | null; error: string | null }> {
@@ -122,7 +127,7 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
 
 /** 本番公開サイトでは Stripe の本番契約（livemode）のみ Pro */
 export function isPaidSubscription(info: SubscriptionInfo | null): boolean {
-  if (!isActiveSubscription(info)) return false;
+  if (!info || !isActiveSubscription(info)) return false;
   if (isProductionSite()) return info.livemode === true;
   return true;
 }
@@ -136,11 +141,10 @@ function planFromSubscription(info: SubscriptionInfo | null): UserPlan {
   return isPaidSubscription(info) ? 'pro' : 'free';
 }
 
-/** Stripe 照会が完了するまで null。課金 ON 時は Pro 判定に localStorage を信用しない */
-let verifiedPlan: UserPlan | null = null;
+let syncEntitlementPromise: Promise<UserPlan> | null = null;
 
 export function resetEntitlementCache(): void {
-  verifiedPlan = null;
+  setEntitlementState(false, false);
 }
 
 /** 課金 ON 時は Stripe 照会済みの契約だけ Pro とみなす */
@@ -148,33 +152,45 @@ export function isProEntitled(): boolean {
   if (!billingEnabled()) {
     return getUserProfile().plan === 'pro';
   }
-  return verifiedPlan === 'pro';
+  const { proSyncDone, proEntitled } = useSongStore.getState();
+  return proSyncDone && proEntitled;
 }
 
 /** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
 export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
-  const profile = getUserProfile();
-  const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
+  if (syncEntitlementPromise) return syncEntitlementPromise;
 
-  if (!billingEnabled() || !deviceId) {
-    verifiedPlan = profile.plan ?? 'free';
-    return verifiedPlan;
-  }
+  syncEntitlementPromise = (async () => {
+    const profile = getUserProfile();
+    const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
 
-  const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
-  if (error) {
-    verifiedPlan = 'free';
-    if (profile.plan === 'pro') {
-      saveUserProfile({ ...getUserProfile(), plan: 'free' });
+    if (!billingEnabled() || !deviceId) {
+      const localPlan = profile.plan ?? 'free';
+      setEntitlementState(true, localPlan === 'pro');
+      return localPlan;
     }
-    return 'free';
-  }
 
-  const serverPlan: UserPlan = planFromSubscription(sub);
-  verifiedPlan = serverPlan;
+    setEntitlementState(false, false);
 
-  if (profile.plan !== serverPlan) {
-    saveUserProfile({ ...getUserProfile(), plan: serverPlan });
-  }
-  return serverPlan;
+    const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
+    if (error) {
+      if (profile.plan === 'pro') {
+        saveUserProfile({ ...getUserProfile(), plan: 'free' });
+      }
+      setEntitlementState(true, false);
+      return 'free';
+    }
+
+    const serverPlan: UserPlan = planFromSubscription(sub);
+    setEntitlementState(true, serverPlan === 'pro');
+
+    if (profile.plan !== serverPlan) {
+      saveUserProfile({ ...getUserProfile(), plan: serverPlan });
+    }
+    return serverPlan;
+  })().finally(() => {
+    syncEntitlementPromise = null;
+  });
+
+  return syncEntitlementPromise;
 }

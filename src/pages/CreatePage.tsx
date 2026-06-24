@@ -12,13 +12,14 @@ import {
   FREE_MAX_CREATED_SONGS,
   FREE_DAILY_LAYER_SESSIONS,
   FREE_DAILY_EXTEND_SESSIONS,
-  isProPlan,
+  useIsProPlan,
   canStartDailyLayerSession,
 } from '@/lib/plan';
 
 export function CreatePage() {
   const { t, translateError } = useI18n();
   const deviceId = useSongStore((s) => s.deviceId);
+  const isPro = useIsProPlan();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const init = useSongStore((s) => s.init);
@@ -69,7 +70,7 @@ export function CreatePage() {
       <h1 className="page-title">{pageTitle}</h1>
       <p className="page-desc">{t('create.desc')}</p>
 
-      {!isProPlan() && remaining != null && dailyLayerRemaining != null && dailyExtendRemaining != null && (
+      {!isPro && remaining != null && dailyLayerRemaining != null && dailyExtendRemaining != null && (
         <p className="hint hint--compact">
           {t('plan.quota', {
             remaining,

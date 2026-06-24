@@ -14,7 +14,7 @@ import {
   isTestModeSubscription,
   type SubscriptionInfo,
 } from '@/lib/billing';
-import { isProPlan } from '@/lib/plan';
+import { isProPlan, useIsProPlan } from '@/lib/plan';
 import { getUserProfile, setBillingContact } from '@/lib/profile';
 
 function isSubActive(info: SubscriptionInfo | null | undefined): boolean {
@@ -41,7 +41,7 @@ export function ProPage() {
   const [billingEmail, setBillingEmail] = useState('');
   const [billingName, setBillingName] = useState('');
   const billingReady = isBillingConfigured();
-  const isPro = isProPlan() || isSubActive(sub);
+  const isPro = useIsProPlan() || isSubActive(sub);
   const isTestOnlySub = isTestModeSubscription(sub);
 
   const showMessage = (text: string, tone: 'ok' | 'warn' | 'neutral' = 'neutral') => {

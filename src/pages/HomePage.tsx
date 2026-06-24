@@ -23,7 +23,7 @@ import {
 
   FREE_DAILY_EXTEND_SESSIONS,
 
-  isProPlan,
+  useIsProPlan,
 
   canUserContributeToday,
 
@@ -57,7 +57,7 @@ export function HomePage() {
 
   const dailyExtendRemaining = remainingDailyExtendSessions();
 
-  const isPro = isProPlan();
+  const isPro = useIsProPlan();
 
 
 

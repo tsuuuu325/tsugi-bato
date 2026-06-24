@@ -1,5 +1,6 @@
 import { isBillingConfigured, isProEntitled } from '@/lib/billing';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
+import { useSongStore } from '@/store/songStore';
 
 import {
   getAllLayers,
@@ -82,6 +83,14 @@ export function isProPlan(): boolean {
     return isProEntitled();
   }
   return getUserPlan() === 'pro';
+}
+
+/** UI 用 — Stripe 照会の更新で再描画される */
+export function useIsProPlan(): boolean {
+  const proSyncDone = useSongStore((s) => s.proSyncDone);
+  const proEntitled = useSongStore((s) => s.proEntitled);
+  if (!isBillingConfigured()) return getUserPlan() === 'pro';
+  return proSyncDone && proEntitled;
 }
 
 

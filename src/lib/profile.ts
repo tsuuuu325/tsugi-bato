@@ -88,12 +88,13 @@ export function setBillingContact(email: string, name: string): void {
 }
 
 export function saveUserProfile(profile: UserProfile): void {
+  const billingOn = import.meta.env.VITE_BILLING_ENABLED === 'true';
   saveJson(PROFILE_KEY, {
     deviceId: profile.deviceId || ensureDeviceId(),
     username: profile.username.trim(),
     avatarEmoji: profile.avatarEmoji || DEFAULT_AVATAR,
     locale: profile.locale,
-    plan: profile.plan ?? 'free',
+    plan: billingOn ? 'free' : (profile.plan ?? 'free'),
     dailyContributions: profile.dailyContributions,
     dailyLayerSessions: profile.dailyLayerSessions,
     dailyExtendSessions: profile.dailyExtendSessions,
