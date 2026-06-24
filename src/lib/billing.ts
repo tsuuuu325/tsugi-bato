@@ -142,9 +142,12 @@ function planFromSubscription(info: SubscriptionInfo | null): UserPlan {
 }
 
 let syncEntitlementPromise: Promise<UserPlan> | null = null;
+let syncGeneration = 0;
+let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSync: { deviceId: string; email?: string } | null = null;
 
 export function resetEntitlementCache(): void {
-  setEntitlementState(false, false);
+  setEntitlementState(true, false);
 }
 
 /** 課金 ON 時は Stripe 照会済みの契約だけ Pro とみなす */
@@ -156,29 +159,48 @@ export function isProEntitled(): boolean {
   return proSyncDone && proEntitled;
 }
 
+/** 複数箇所からの照会を1本にまとめる（ページ遷移のたびに走らせない） */
+export function requestBillingSync(deviceId: string, email?: string): void {
+  if (!billingEnabled() || !deviceId) return;
+  pendingSync = { deviceId, email };
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    const next = pendingSync;
+    pendingSync = null;
+    syncDebounceTimer = null;
+    if (next) void syncProPlanFromServer(next.deviceId, next.email);
+  }, 150);
+}
+
 /** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
 export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
   if (syncEntitlementPromise) return syncEntitlementPromise;
 
+  const generation = ++syncGeneration;
+
   syncEntitlementPromise = (async () => {
     const profile = getUserProfile();
     const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
+    const hadSynced = useSongStore.getState().proSyncDone;
 
     if (!billingEnabled() || !deviceId) {
       const localPlan = profile.plan ?? 'free';
-      setEntitlementState(true, localPlan === 'pro');
+      if (generation === syncGeneration) {
+        setEntitlementState(true, localPlan === 'pro');
+      }
       return localPlan;
     }
 
-    setEntitlementState(false, false);
-
     const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
+    if (generation !== syncGeneration) {
+      return useSongStore.getState().proEntitled ? 'pro' : 'free';
+    }
+
     if (error) {
-      if (profile.plan === 'pro') {
-        saveUserProfile({ ...getUserProfile(), plan: 'free' });
+      if (!hadSynced) {
+        setEntitlementState(true, false);
       }
-      setEntitlementState(true, false);
-      return 'free';
+      return useSongStore.getState().proEntitled ? 'pro' : 'free';
     }
 
     const serverPlan: UserPlan = planFromSubscription(sub);

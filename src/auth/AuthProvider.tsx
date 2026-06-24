@@ -58,10 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveUserProfile({ ...profile, authUserId: undefined });
       }
 
-      const { syncProPlanFromServer } = await import('@/lib/billing');
+      const { requestBillingSync } = await import('@/lib/billing');
       const deviceId = profile.deviceId;
       if (deviceId) {
-        await syncProPlanFromServer(deviceId, profile.billingEmail);
+        requestBillingSync(deviceId, profile.billingEmail);
       }
     };
 

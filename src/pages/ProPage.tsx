@@ -17,10 +17,6 @@ import {
 import { isProPlan, useIsProPlan } from '@/lib/plan';
 import { getUserProfile, setBillingContact } from '@/lib/profile';
 
-function isSubActive(info: SubscriptionInfo | null | undefined): boolean {
-  return isPaidSubscription(info ?? null);
-}
-
 function resolveContactEmail(formEmail: string, authEmail: string | null): string {
   return formEmail.trim()
     || getUserProfile().billingEmail?.trim()
@@ -41,7 +37,9 @@ export function ProPage() {
   const [billingEmail, setBillingEmail] = useState('');
   const [billingName, setBillingName] = useState('');
   const billingReady = isBillingConfigured();
-  const isPro = useIsProPlan() || isSubActive(sub);
+  const proSyncDone = useSongStore((s) => s.proSyncDone);
+  const isPro = useIsProPlan();
+  const billingStatusLoading = billingReady && !proSyncDone;
   const isTestOnlySub = isTestModeSubscription(sub);
 
   const showMessage = (text: string, tone: 'ok' | 'warn' | 'neutral' = 'neutral') => {
@@ -77,7 +75,7 @@ export function ProPage() {
         await syncProPlanFromServer(deviceId, contactEmail || undefined);
         const { info } = await fetchSubscription(deviceId, contactEmail || undefined);
         setSub(info);
-        if (isSubActive(info)) {
+        if (isPaidSubscription(info)) {
           searchParams.delete('success');
           setSearchParams(searchParams, { replace: true });
           return;
@@ -117,7 +115,7 @@ export function ProPage() {
     const { info, error } = await fetchSubscription(deviceId, email);
     setSub(info);
     setLoading(false);
-    if (plan === 'pro' || isSubActive(info)) {
+    if (plan === 'pro' || isPro) {
       showMessage(t('billing.active'), 'ok');
       return;
     }
@@ -207,7 +205,9 @@ export function ProPage() {
           <li>{t('billing.featureDaily')}</li>
         </ul>
 
-        {isPro ? (
+        {billingStatusLoading ? (
+          <p className="hint hint--compact">{t('common.loading')}</p>
+        ) : isPro ? (
           <>
             <p className="hint hint--compact">{t('billing.active')}</p>
             {periodEnd && (

@@ -226,11 +226,7 @@ export const useSongStore = create<SongStore>((set, get) => ({
   proEntitled: false,
 
   init: () => {
-    if (storeInitDone) {
-      const profile = getUserProfile();
-      void refreshBillingEntitlement(profile.deviceId, profile.billingEmail);
-      return;
-    }
+    if (storeInitDone) return;
     storeInitDone = true;
 
     const wipeRemote = migrateStorageVersion();
