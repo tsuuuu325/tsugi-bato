@@ -64,7 +64,11 @@ export default defineConfig(({ mode }) => {
       seoBuildPlugin(siteUrl, googleVerification),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'robots.txt', 'sitemap.xml'],
+        includeAssets: ['favicon.svg'],
+        workbox: {
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/sitemap\.xml$/, /^\/robots\.txt$/],
+        },
         manifest: {
           name: 'BeatRelay — コラボ型ビートメーカー',
           short_name: 'BeatRelay',

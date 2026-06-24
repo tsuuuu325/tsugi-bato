@@ -380,6 +380,7 @@ export function attachSyncCodeToUrl(): void {
   const syncCode = getLocalSyncCode();
   if (!syncCode) return;
   const url = new URL(window.location.href);
+  if (/^\/(sitemap\.xml|robots\.txt)$/.test(url.pathname)) return;
   if (url.searchParams.get('sync') === syncCode) return;
   url.searchParams.set('sync', syncCode);
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
