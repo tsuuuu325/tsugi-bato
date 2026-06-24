@@ -1,4 +1,4 @@
-import type { Song, Layer, UserProfile } from '@/types';
+import type { Song, Layer, UserProfile, UserPlan } from '@/types';
 import { generateShareCode } from '@/types';
 import { getUserProfile, saveUserProfile, ensureDeviceId } from '@/lib/profile';
 import { getTodayDateKey } from '@/lib/plan';
@@ -8,6 +8,7 @@ import {
   replaceAllSongs,
   replaceAllLayers,
 } from '@/lib/storage';
+import { isBillingConfigured } from '@/lib/billing';
 import { isSupabaseConfigured, supabaseGet, supabaseUpsert, supabaseInsert, supabasePatch } from '@/lib/supabase';
 
 const SYNC_CODE_KEY = 'tsugi-bato-sync-code';
@@ -61,13 +62,19 @@ function mergeDailyCounter(
   return { date: today, count: Math.max(aCount, bCount) };
 }
 
+function resolveMergedPlan(base: UserProfile, extra: Partial<UserProfile>): UserPlan {
+  if (isBillingConfigured()) return 'free';
+  if (base.plan === 'pro' || extra.plan === 'pro') return 'pro';
+  return extra.plan ?? base.plan ?? 'free';
+}
+
 function mergeProfiles(base: UserProfile, extra: Partial<UserProfile>, userId: string, email?: string): UserProfile {
   const merged: UserProfile = {
     ...base,
     ...extra,
     deviceId: base.deviceId || extra.deviceId || ensureDeviceId(),
     authUserId: userId,
-    plan: (base.plan === 'pro' || extra.plan === 'pro') ? 'pro' : (extra.plan ?? base.plan ?? 'free'),
+    plan: resolveMergedPlan(base, extra),
     dailyLayerSessions: mergeDailyCounter(base.dailyLayerSessions, extra.dailyLayerSessions),
     dailyExtendSessions: mergeDailyCounter(base.dailyExtendSessions, extra.dailyExtendSessions),
     billingEmail: base.billingEmail || extra.billingEmail || email,
@@ -115,9 +122,6 @@ export function mergeDeviceBackups(
     profile = mergeProfiles(profile, row.profile ?? {}, userId, email);
   }
   profile = mergeProfiles(profile, {}, userId, email);
-  if (rows.some((row) => row.profile?.plan === 'pro')) {
-    profile.plan = 'pro';
-  }
   profile.deviceId = deviceId;
   profile.syncCode = syncCode;
   profile.authUserId = userId;
@@ -175,8 +179,11 @@ function getExampleSongIds(): Set<string> {
 export function applyBackupLocally(backup: DeviceBackupRow): void {
   const syncCode = backup.sync_code || backup.profile.syncCode || ensureLocalSyncCode();
   localStorage.setItem(SYNC_CODE_KEY, syncCode);
+  const profile = isBillingConfigured() && backup.profile.plan === 'pro'
+    ? { ...backup.profile, plan: 'free' as const }
+    : backup.profile;
   saveUserProfile({
-    ...backup.profile,
+    ...profile,
     deviceId: backup.device_id,
     syncCode,
   });

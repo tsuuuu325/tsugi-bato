@@ -115,6 +115,8 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
 export async function signOut(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut();
+  const { resetEntitlementCache } = await import('@/lib/billing');
+  resetEntitlementCache();
   const { getUserProfile, saveUserProfile } = await import('@/lib/profile');
   const profile = getUserProfile();
   if (profile.authUserId) {

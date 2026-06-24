@@ -1,3 +1,4 @@
+import { isBillingConfigured, isProEntitled } from '@/lib/billing';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
 
 import {
@@ -77,9 +78,10 @@ export function getUserPlan(): UserPlan {
 
 
 export function isProPlan(): boolean {
-
+  if (isBillingConfigured()) {
+    return isProEntitled();
+  }
   return getUserPlan() === 'pro';
-
 }
 
 

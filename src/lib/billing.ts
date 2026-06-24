@@ -117,35 +117,45 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   return info.status === 'active' || info.status === 'trialing' || info.status === 'past_due';
 }
 
+/** Stripe 照会が完了するまで null。課金 ON 時は Pro 判定に localStorage を信用しない */
+let verifiedPlan: UserPlan | null = null;
+
+export function resetEntitlementCache(): void {
+  verifiedPlan = null;
+}
+
+/** 課金 ON 時は Stripe 照会済みの契約だけ Pro とみなす */
+export function isProEntitled(): boolean {
+  if (!billingEnabled()) {
+    return getUserProfile().plan === 'pro';
+  }
+  return verifiedPlan === 'pro';
+}
+
 /** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
 export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
   const profile = getUserProfile();
   const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
 
   if (!billingEnabled() || !deviceId) {
-    return profile.plan ?? 'free';
+    verifiedPlan = profile.plan ?? 'free';
+    return verifiedPlan;
   }
 
   const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
   if (error) {
-    return profile.plan ?? 'free';
+    verifiedPlan = 'free';
+    if (profile.plan === 'pro') {
+      saveUserProfile({ ...getUserProfile(), plan: 'free' });
+    }
+    return 'free';
   }
 
   const serverPlan: UserPlan = isActiveSubscription(sub) ? 'pro' : 'free';
+  verifiedPlan = serverPlan;
 
-  if (serverPlan === 'pro') {
-    if (profile.plan !== 'pro') {
-      saveUserProfile({ ...getUserProfile(), plan: 'pro' });
-    }
-    return 'pro';
+  if (profile.plan !== serverPlan) {
+    saveUserProfile({ ...getUserProfile(), plan: serverPlan });
   }
-
-  if (contactEmail && sub) {
-    if (profile.plan !== serverPlan) {
-      saveUserProfile({ ...getUserProfile(), plan: serverPlan });
-    }
-    return serverPlan;
-  }
-
-  return profile.plan ?? 'free';
+  return serverPlan;
 }
