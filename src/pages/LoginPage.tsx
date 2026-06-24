@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { useI18n } from '@/i18n/LocaleProvider';
 import {
@@ -8,13 +8,15 @@ import {
   signInWithGoogle,
   signOut,
   formatAuthError,
-  getAuthCallbackRedirectUrl,
 } from '@/lib/auth';
-import { getUserProfile, saveUserProfile } from '@/lib/profile';
 
 export function LoginPage() {
   const { t, translateError } = useI18n();
   const { isLoggedIn, email, loading, authError } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('next')?.trim() || '/';
+  const safeReturnTo = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
   const [inputEmail, setInputEmail] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,12 @@ export function LoginPage() {
       setMessage(`⚠️ ${translateError(formatAuthError(authError))}`);
     }
   }, [authError, translateError]);
+
+  useEffect(() => {
+    if (!loading && isLoggedIn) {
+      navigate(safeReturnTo, { replace: true });
+    }
+  }, [loading, isLoggedIn, navigate, safeReturnTo]);
 
   useEffect(() => {
     if (!loading && isLoggedIn && email) {
@@ -128,7 +136,9 @@ export function LoginPage() {
       {!isLoggedIn && (
         <p className="hint hint--compact login-anonymous-hint">{t('auth.anonymousHint')}</p>
       )}
-      <p className="hint hint--compact">{t('auth.redirectTarget', { url: getAuthCallbackRedirectUrl() })}</p>
+      {!isLoggedIn && safeReturnTo !== '/' && (
+        <p className="hint hint--compact">{t('auth.redirectTarget', { url: `${window.location.origin}${safeReturnTo}` })}</p>
+      )}
     </div>
   );
 }

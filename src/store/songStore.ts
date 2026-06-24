@@ -57,6 +57,7 @@ import {
 } from '@/lib/plan';
 import { publishSongToFeed } from '@/lib/feed';
 import { pullDeviceBackup, scheduleDeviceBackup, attachSyncCodeToUrl, pushDeviceBackup } from '@/lib/deviceSync';
+import { assertCanCreateMusic } from '@/lib/authGate';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { waitForAuthReady } from '@/lib/authReady';
 import { VIRTUAL_PART_LOOP_ID } from '@/data/loops';
@@ -139,6 +140,12 @@ function resolveAvatar(storeAvatar: string): string {
 
 function resolveDeviceId(storeDeviceId: string): string {
   return storeDeviceId || getDeviceId();
+}
+
+function creationAuthBlock(): { ok: false; reason: string } | null {
+  const gate = assertCanCreateMusic();
+  if (!gate.ok) return { ok: false, reason: gate.reason };
+  return null;
 }
 
 async function publishIfComplete(song: SongWithLayers): Promise<void> {
@@ -296,6 +303,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   createSong: ({ title, bpm, foundationLoopId, mode, addVirtualPart }) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const username = resolveUsername(get().username);
     const avatar = resolveAvatar(get().avatarEmoji);
     const deviceId = resolveDeviceId(get().deviceId);
@@ -369,6 +379,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   addLayer: (songId: string, loopId: string, addMode: LayerAddMode, sectionBpm?: number, targetSectionIndex?: number) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -510,6 +523,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   updateSectionBpm: (songId: string, sectionIndex: number, bpm: number) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -551,6 +567,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   updateExampleBpm: (songId: string, bpm: number) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -572,6 +591,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   finishContribution: (songId: string) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -609,6 +631,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   cancelContribution: (songId: string) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -667,6 +692,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   removeLayer: (songId: string, layerId: string) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     const song = getSongWithLayers(songId);
     if (!song) {
       return { ok: false, reason: 'songNotFound' };
@@ -715,6 +743,8 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   toggleLayerStep: (layerId: string, stepIndex: number) => {
+    if (creationAuthBlock()) return null;
+
     const layer = getAllLayers().find((l) => l.id === layerId);
     if (!layer) return null;
 
@@ -738,6 +768,9 @@ export const useSongStore = create<SongStore>((set, get) => ({
   },
 
   completeSong: (songId: string, title?: string) => {
+    const blocked = creationAuthBlock();
+    if (blocked) return blocked;
+
     let song = getSongWithLayers(songId);
     if (!song) return { ok: false as const, reason: 'songNotFound' };
     if (song.sectionCount < MIN_TIMELINE_SECTIONS) {

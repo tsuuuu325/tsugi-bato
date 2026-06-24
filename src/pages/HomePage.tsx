@@ -7,6 +7,8 @@ import { useSongStore } from '@/store/songStore';
 import { canAddLayer, canUserAddLayer } from '@/types';
 
 import { useI18n } from '@/i18n/LocaleProvider';
+import { useAuth } from '@/auth/AuthProvider';
+import { creationRequiresLogin, loginPathFor } from '@/lib/authGate';
 
 import { getLayersForSong } from '@/lib/storage';
 import {
@@ -34,6 +36,9 @@ import {
 export function HomePage() {
 
   const { t } = useI18n();
+  const { isLoggedIn } = useAuth();
+  const authGate = creationRequiresLogin();
+  const hrefForCreate = (path: string) => (authGate && !isLoggedIn ? loginPathFor(path) : path);
 
   const deviceId = useSongStore((s) => s.deviceId);
 
@@ -293,7 +298,11 @@ export function HomePage() {
 
       <section className="mode-grid">
 
-        <Link to="/create" className="mode-card mode-card--create">
+        {authGate && !isLoggedIn && (
+          <p className="hint hint--compact mode-grid-login-hint">{t('auth.loginToCreateHint')}</p>
+        )}
+
+        <Link to={hrefForCreate('/create')} className="mode-card mode-card--create">
 
           <span className="mode-icon">🥁</span>
 
@@ -313,7 +322,7 @@ export function HomePage() {
 
         </Link>
 
-        <Link to="/create?solo=1" className="mode-card mode-card--solo">
+        <Link to={hrefForCreate('/create?solo=1')} className="mode-card mode-card--solo">
 
           <span className="mode-icon">🎹</span>
 
@@ -337,7 +346,7 @@ export function HomePage() {
 
             {waitingForMe.slice(0, 5).map((song) => (
 
-              <Link key={song.id} to={`/add/${song.shareCode}`} className="song-list-item song-list-item--continue">
+              <Link key={song.id} to={hrefForCreate(`/add/${song.shareCode}`)} className="song-list-item song-list-item--continue">
 
                 <div className="song-list-info">
 

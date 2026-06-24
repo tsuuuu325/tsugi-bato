@@ -5,9 +5,14 @@ import { canAddLayer, canUserAddLayer, getNextPartNumber, getContributorCount } 
 import { getLoopById } from '@/data/loops';
 import { Avatar } from '@/components/Avatar';
 import { useI18n } from '@/i18n/LocaleProvider';
+import { useAuth } from '@/auth/AuthProvider';
+import { creationRequiresLogin, loginPathFor } from '@/lib/authGate';
 
 export function CollaboratePage() {
   const { t, formatPart } = useI18n();
+  const { isLoggedIn } = useAuth();
+  const authGate = creationRequiresLogin();
+  const hrefForCreate = (path: string) => (authGate && !isLoggedIn ? loginPathFor(path) : path);
   const openSongs = useSongStore((s) => s.openSongs);
   const deviceId = useSongStore((s) => s.deviceId);
   const init = useSongStore((s) => s.init);
@@ -26,7 +31,7 @@ export function CollaboratePage() {
       {joinable.length === 0 ? (
         <div className="empty-state">
           <p>{t('collaborate.empty')}</p>
-          <Link to="/create" className="btn btn-primary">{t('collaborate.createFoundation')}</Link>
+          <Link to={hrefForCreate('/create')} className="btn btn-primary">{t('collaborate.createFoundation')}</Link>
           <Link to="/timeline" className="btn btn-secondary">{t('collaborate.viewTimeline')}</Link>
         </div>
       ) : (
@@ -74,7 +79,7 @@ export function CollaboratePage() {
                   ))}
                 </div>
                 <div className="collab-card-actions">
-                  <Link to={`/add/${song.shareCode}`} className="collab-cta">
+                  <Link to={hrefForCreate(`/add/${song.shareCode}`)} className="collab-cta">
                     {t('part.addPartContinue', { part: formatPart(nextPart) })}
                   </Link>
                   <Link to={`/song/${song.shareCode}`} className="collab-cta collab-cta--muted">

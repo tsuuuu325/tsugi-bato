@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
+import { RequireLogin } from '@/components/RequireLogin';
 import { HomePage } from '@/pages/HomePage';
 import { CreatePage } from '@/pages/CreatePage';
 import { CollaboratePage } from '@/pages/CollaboratePage';
@@ -20,9 +21,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/timeline" element={<TimelinePage />} />
-        <Route path="/create" element={<CreatePage />} />
+        <Route path="/create" element={<RequireLogin><CreatePage /></RequireLogin>} />
         <Route path="/collaborate" element={<CollaboratePage />} />
-        <Route path="/add/:code" element={<AddLayerPage />} />
+        <Route path="/add/:code" element={<RequireLogin><AddLayerPage /></RequireLogin>} />
         <Route path="/song/:code" element={<SongPage />} />
         <Route path="/s/:code" element={<SongPage />} />
         <Route path="/me" element={<MyPage />} />

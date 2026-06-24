@@ -14,6 +14,7 @@ import { getReferenceBpm } from '@/types';
 import { getLocalSyncCode, getShareUrlWithSync } from '@/lib/deviceSync';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/auth/AuthProvider';
+import { creationRequiresLogin, loginPathFor } from '@/lib/authGate';
 
 export function MyPage() {
   const { t, formatBpmSections } = useI18n();
@@ -48,6 +49,8 @@ export function MyPage() {
   };
 
   const { isLoggedIn, email } = useAuth();
+  const authGate = creationRequiresLogin();
+  const createHref = authGate && !isLoggedIn ? loginPathFor('/create') : '/create';
   const syncCode = getLocalSyncCode();
   const showSyncFallback = isSupabaseConfigured() && !isLoggedIn;
 
@@ -130,7 +133,7 @@ export function MyPage() {
         {!loading && songs.length === 0 && (
           <div className="empty-state">
             <p>{t('my.empty')}</p>
-            <Link to="/create" className="btn btn-primary">{t('timeline.startBeat')}</Link>
+            <Link to={createHref} className="btn btn-primary">{t('timeline.startBeat')}</Link>
           </div>
         )}
         <div className="my-song-list">

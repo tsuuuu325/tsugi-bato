@@ -5,9 +5,14 @@ import { useSongStore } from '@/store/songStore';
 import { fetchFeedSongs, isFeedGlobal } from '@/lib/feed';
 import type { FeedSong } from '@/types';
 import { useI18n } from '@/i18n/LocaleProvider';
+import { useAuth } from '@/auth/AuthProvider';
+import { creationRequiresLogin, loginPathFor } from '@/lib/authGate';
 
 export function TimelinePage() {
   const { t, locale } = useI18n();
+  const { isLoggedIn } = useAuth();
+  const authGate = creationRequiresLogin();
+  const createHref = authGate && !isLoggedIn ? loginPathFor('/create') : '/create';
   const init = useSongStore((s) => s.init);
   const username = useSongStore((s) => s.username);
   const avatarEmoji = useSongStore((s) => s.avatarEmoji);
@@ -50,7 +55,7 @@ export function TimelinePage() {
       ) : feed.length === 0 ? (
         <div className="empty-state">
           <p>{t('timeline.empty')}</p>
-          <Link to="/create" className="btn btn-primary">{t('timeline.startBeat')}</Link>
+          <Link to={createHref} className="btn btn-primary">{t('timeline.startBeat')}</Link>
         </div>
       ) : (
         <div className="feed-list">
