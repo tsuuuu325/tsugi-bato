@@ -37,10 +37,12 @@ function seoBuildPlugin(siteUrl: string, googleVerification?: string) {
     },
     closeBundle() {
       const base = siteUrl.replace(/\/$/, '');
+      const today = new Date().toISOString().slice(0, 10);
       const urls = SITEMAP_PATHS.map((path) => {
         const priority = path === '/' ? '1.0' : path === '/timeline' ? '0.9' : '0.5';
         const changefreq = path === '/timeline' ? 'daily' : path === '/' ? 'weekly' : 'monthly';
-        return `  <url>\n    <loc>${base}${path === '/' ? '/' : path}</loc>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+        const loc = `${base}${path === '/' ? '/' : path}`;
+        return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
       }).join('\n');
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
       const robots = `User-agent: *\nAllow: /\n\nSitemap: ${base}/sitemap.xml\n`;
