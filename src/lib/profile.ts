@@ -1,8 +1,23 @@
 import { v4 as uuidv4 } from 'uuid';
 import { DEFAULT_AVATAR } from '@/types';
-import type { UserProfile } from '@/types';
+import type { UserProfile, UserPlan } from '@/types';
 
 const PROFILE_KEY = 'tsugi-bato-profile';
+
+function billingPlanLocked(): boolean {
+  return import.meta.env.VITE_BILLING_ENABLED === 'true';
+}
+
+function normalizePlan(raw: Partial<UserProfile>): UserPlan {
+  if (billingPlanLocked()) return 'free';
+  return raw.plan === 'pro' ? 'pro' : 'free';
+}
+
+/** 課金 ON 時に localStorage に残った plan:pro を即削除 */
+function migrateStaleProPlan(raw: Partial<UserProfile>): void {
+  if (!billingPlanLocked() || raw.plan !== 'pro') return;
+  saveJson(PROFILE_KEY, { ...raw, plan: 'free' });
+}
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -27,7 +42,7 @@ export function ensureDeviceId(): string {
     username: profile.username?.trim() ?? '',
     avatarEmoji: profile.avatarEmoji || DEFAULT_AVATAR,
     locale: profile.locale,
-    plan: profile.plan ?? 'free',
+    plan: normalizePlan(profile),
     dailyContributions: profile.dailyContributions,
     dailyLayerSessions: profile.dailyLayerSessions,
     dailyExtendSessions: profile.dailyExtendSessions,
@@ -45,6 +60,7 @@ export function getDeviceId(): string {
 
 export function getUserProfile(): UserProfile {
   const raw = loadJson<Partial<UserProfile>>(PROFILE_KEY, {});
+  migrateStaleProPlan(raw);
   if (!raw.deviceId) {
     const deviceId = ensureDeviceId();
     return {
@@ -52,7 +68,7 @@ export function getUserProfile(): UserProfile {
       username: raw.username?.trim() ?? '',
       avatarEmoji: raw.avatarEmoji || DEFAULT_AVATAR,
       locale: raw.locale,
-      plan: raw.plan ?? 'free',
+      plan: normalizePlan(raw),
       dailyContributions: raw.dailyContributions,
       dailyLayerSessions: raw.dailyLayerSessions,
       dailyExtendSessions: raw.dailyExtendSessions,
@@ -67,7 +83,7 @@ export function getUserProfile(): UserProfile {
     username: raw.username?.trim() ?? '',
     avatarEmoji: raw.avatarEmoji || DEFAULT_AVATAR,
     locale: raw.locale,
-    plan: raw.plan ?? 'free',
+    plan: normalizePlan(raw),
     dailyContributions: raw.dailyContributions,
     dailyLayerSessions: raw.dailyLayerSessions,
     dailyExtendSessions: raw.dailyExtendSessions,
@@ -94,7 +110,7 @@ export function saveUserProfile(profile: UserProfile): void {
     username: profile.username.trim(),
     avatarEmoji: profile.avatarEmoji || DEFAULT_AVATAR,
     locale: profile.locale,
-    plan: billingOn ? 'free' : (profile.plan ?? 'free'),
+    plan: billingOn ? 'free' : normalizePlan(profile),
     dailyContributions: profile.dailyContributions,
     dailyLayerSessions: profile.dailyLayerSessions,
     dailyExtendSessions: profile.dailyExtendSessions,

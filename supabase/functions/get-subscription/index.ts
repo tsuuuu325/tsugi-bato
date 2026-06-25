@@ -42,11 +42,16 @@ function toResponse(
   };
 }
 
+function isEntitledSubscription(sub: Stripe.Subscription): boolean {
+  return isActiveStatus(sub.status) && sub.livemode === true;
+}
+
 function subscriptionResponse(sub: Stripe.Subscription) {
+  const entitled = isEntitledSubscription(sub);
   return {
-    status: sub.status,
-    currentPeriodEnd: subscriptionPeriodEndIso(sub),
-    cancelAtPeriodEnd: sub.cancel_at_period_end,
+    status: entitled ? sub.status : 'inactive',
+    currentPeriodEnd: entitled ? subscriptionPeriodEndIso(sub) : null,
+    cancelAtPeriodEnd: entitled ? sub.cancel_at_period_end : false,
     livemode: sub.livemode,
   };
 }
@@ -242,7 +247,11 @@ Deno.serve(async (req) => {
     );
 
     if (stripeSub) {
-      await upsertFromStripeSub(stripeSub, deviceId, hintRow, customer);
+      if (isEntitledSubscription(stripeSub)) {
+        await upsertFromStripeSub(stripeSub, deviceId, hintRow, customer);
+      } else if (isActiveStatus(stripeSub.status)) {
+        await markDeviceSubscriptionInactive(deviceId);
+      }
       return jsonResponse(subscriptionResponse(stripeSub));
     }
 
@@ -267,7 +276,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    return jsonResponse(toResponse(deviceRow, false));
+    if (isActiveStatus(deviceRow.status)) {
+      await markDeviceSubscriptionInactive(deviceRow.device_id ?? deviceId);
+    }
+
+    return jsonResponse({
+      status: 'inactive',
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      livemode: false,
+    });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }

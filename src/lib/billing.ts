@@ -1,6 +1,5 @@
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getUserProfile, saveUserProfile } from '@/lib/profile';
-import { isProductionSite } from '@/lib/siteUrl';
 import { useSongStore } from '@/store/songStore';
 import type { UserPlan } from '@/types';
 
@@ -8,7 +7,7 @@ export interface SubscriptionInfo {
   status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
-  /** false = Stripe テストモードの契約（本番サイトでは Pro 対象外） */
+  /** false = Stripe テストモードの契約（Pro 対象外） */
   livemode?: boolean;
 }
 
@@ -19,6 +18,13 @@ function functionsBaseUrl(): string | null {
 
 function billingEnabled(): boolean {
   return import.meta.env.VITE_BILLING_ENABLED === 'true' && Boolean(functionsBaseUrl());
+}
+
+function allowTestBillingDev(): boolean {
+  if (import.meta.env.VITE_BILLING_ALLOW_TEST !== 'true') return false;
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1';
 }
 
 export function isBillingConfigured(): boolean {
@@ -125,11 +131,12 @@ function isActiveSubscription(info: SubscriptionInfo | null): boolean {
   return info.status === 'active' || info.status === 'trialing' || info.status === 'past_due';
 }
 
-/** 本番公開サイトでは Stripe の本番契約（livemode）のみ Pro */
+/** 本番の Pro = Stripe 本番契約（livemode: true）のみ。localhost + 明示フラグ時だけテスト可 */
 export function isPaidSubscription(info: SubscriptionInfo | null): boolean {
   if (!info || !isActiveSubscription(info)) return false;
-  if (isProductionSite()) return info.livemode === true;
-  return true;
+  if (info.livemode === true) return true;
+  if (info.livemode === false) return false;
+  return allowTestBillingDev();
 }
 
 export function isTestModeSubscription(info: SubscriptionInfo | null): boolean {
@@ -150,16 +157,13 @@ export function resetEntitlementCache(): void {
   setEntitlementState(true, false);
 }
 
-/** 課金 ON 時は Stripe 照会済みの契約だけ Pro とみなす */
+/** 課金 ON 時は Stripe 照会済みの本番契約だけ Pro */
 export function isProEntitled(): boolean {
-  if (!billingEnabled()) {
-    return getUserProfile().plan === 'pro';
-  }
+  if (!billingEnabled()) return false;
   const { proSyncDone, proEntitled } = useSongStore.getState();
   return proSyncDone && proEntitled;
 }
 
-/** 複数箇所からの照会を1本にまとめる（ページ遷移のたびに走らせない） */
 export function requestBillingSync(deviceId: string, email?: string): void {
   if (!billingEnabled() || !deviceId) return;
   pendingSync = { deviceId, email };
@@ -172,7 +176,6 @@ export function requestBillingSync(deviceId: string, email?: string): void {
   }, 150);
 }
 
-/** ログイン端末でも Stripe / クラウド上の Pro を反映（email で横断検索） */
 export async function syncProPlanFromServer(deviceId: string, email?: string): Promise<UserPlan> {
   if (syncEntitlementPromise) return syncEntitlementPromise;
 
@@ -181,14 +184,12 @@ export async function syncProPlanFromServer(deviceId: string, email?: string): P
   syncEntitlementPromise = (async () => {
     const profile = getUserProfile();
     const contactEmail = email?.trim() || profile.billingEmail?.trim() || undefined;
-    const hadSynced = useSongStore.getState().proSyncDone;
 
     if (!billingEnabled() || !deviceId) {
-      const localPlan = profile.plan ?? 'free';
       if (generation === syncGeneration) {
-        setEntitlementState(true, localPlan === 'pro');
+        setEntitlementState(true, false);
       }
-      return localPlan;
+      return 'free';
     }
 
     const { info: sub, error } = await fetchSubscription(deviceId, contactEmail);
@@ -197,17 +198,17 @@ export async function syncProPlanFromServer(deviceId: string, email?: string): P
     }
 
     if (error) {
-      if (!hadSynced) {
+      if (generation === syncGeneration) {
         setEntitlementState(true, false);
       }
-      return useSongStore.getState().proEntitled ? 'pro' : 'free';
+      return 'free';
     }
 
     const serverPlan: UserPlan = planFromSubscription(sub);
     setEntitlementState(true, serverPlan === 'pro');
 
-    if (profile.plan !== serverPlan) {
-      saveUserProfile({ ...getUserProfile(), plan: serverPlan });
+    if (profile.plan !== 'free') {
+      saveUserProfile({ ...getUserProfile(), plan: 'free' });
     }
     return serverPlan;
   })().finally(() => {

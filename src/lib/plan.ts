@@ -82,14 +82,14 @@ export function isProPlan(): boolean {
   if (isBillingConfigured()) {
     return isProEntitled();
   }
-  return getUserPlan() === 'pro';
+  return false;
 }
 
 /** UI 用 — Stripe 照会の更新で再描画される */
 export function useIsProPlan(): boolean {
   const proSyncDone = useSongStore((s) => s.proSyncDone);
   const proEntitled = useSongStore((s) => s.proEntitled);
-  if (!isBillingConfigured()) return getUserPlan() === 'pro';
+  if (!isBillingConfigured()) return false;
   return proSyncDone && proEntitled;
 }
 
